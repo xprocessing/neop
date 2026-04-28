@@ -1,0 +1,215 @@
+{
+  "pages": [
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationBarTitleText": "NEOP任务营销"
+      }
+    },
+    {
+      "path": "pages/task/list",
+      "style": {
+        "navigationBarTitleText": "任务广场"
+      }
+    },
+    {
+      "path": "pages/task/detail",
+      "style": {
+        "navigationBarTitleText": "任务详情"
+      }
+    },
+    {
+      "path": "pages/task/my",
+      "style": {
+        "navigationBarTitleText": "我的任务"
+      }
+    },
+    {
+      "path": "pages/task/submit",
+      "style": {
+        "navigationBarTitleText": "提交工单"
+      }
+    },
+    {
+      "path": "pages/shop/index",
+      "style": {
+        "navigationBarTitleText": "商城"
+      }
+    },
+    {
+      "path": "pages/shop/product",
+      "style": {
+        "navigationBarTitleText": "商品详情"
+      }
+    },
+    {
+      "path": "pages/shop/cart",
+      "style": {
+        "navigationBarTitleText": "购物车"
+      }
+    },
+    {
+      "path": "pages/shop/order",
+      "style": {
+        "navigationBarTitleText": "我的订单"
+      }
+    },
+    {
+      "path": "pages/shop/order-detail",
+      "style": {
+        "navigationBarTitleText": "订单详情"
+      }
+    },
+    {
+      "path": "pages/shop/checkout",
+      "style": {
+        "navigationBarTitleText": "确认订单"
+      }
+    },
+    {
+      "path": "pages/user/index",
+      "style": {
+        "navigationBarTitleText": "个人中心"
+      }
+    },
+    {
+      "path": "pages/user/signin",
+      "style": {
+        "navigationBarTitleText": "签到"
+      }
+    },
+    {
+      "path": "pages/user/invite",
+      "style": {
+        "navigationBarTitleText": "邀请有礼"
+      }
+    },
+    {
+      "path": "pages/user/member",
+      "style": {
+        "navigationBarTitleText": "会员中心"
+      }
+    },
+    {
+      "path": "pages/user/address",
+      "style": {
+        "navigationBarTitleText": "收货地址"
+      }
+    },
+    {
+      "path": "pages/user/address-edit",
+      "style": {
+        "navigationBarTitleText": "编辑地址"
+      }
+    },
+    {
+      "path": "pages/user/withdraw",
+      "style": {
+        "navigationBarTitleText": "提现"
+      }
+    },
+    {
+      "path": "pages/user/points",
+      "style": {
+        "navigationBarTitleText": "积分明细"
+      }
+    },
+    {
+      "path": "pages/auth/login",
+      "style": {
+        "navigationBarTitleText": "登录"
+      }
+    },
+    {
+      "path": "pages/auth/register",
+      "style": {
+        "navigationBarTitleText": "注册"
+      }
+    },
+    {
+      "path": "pages/auth/bind-phone",
+      "style": {
+        "navigationBarTitleText": "绑定手机"
+      }
+    },
+    {
+      "path": "pages/auth/forgot-password",
+      "style": {
+        "navigationBarTitleText": "忘记密码"
+      }
+    },
+    {
+      "path": "pages/shop/payment-result",
+      "style": {
+        "navigationBarTitleText": "支付结果"
+      }
+    },
+    {
+      "path": "pages/search/index",
+      "style": {
+        "navigationBarTitleText": "搜索"
+      }
+    },
+    {
+      "path": "pages/message/index",
+      "style": {
+        "navigationBarTitleText": "消息通知"
+      }
+    },
+    {
+      "path": "pages/user/settings",
+      "style": {
+        "navigationBarTitleText": "设置"
+      }
+    },
+    {
+      "path": "pages/about/index",
+      "style": {
+        "navigationBarTitleText": "关于我们"
+      }
+    },
+    {
+      "path": "pages/help/index",
+      "style": {
+        "navigationBarTitleText": "帮助中心"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f5f5f5"
+  },
+  "tabBar": {
+    "color": "#999999",
+    "selectedColor": "#007aff",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页",
+        "iconPath": "static/tab/home.png",
+        "selectedIconPath": "static/tab/home-active.png"
+      },
+      {
+        "pagePath": "pages/task/list",
+        "text": "任务",
+        "iconPath": "static/tab/task.png",
+        "selectedIconPath": "static/tab/task-active.png"
+      },
+      {
+        "pagePath": "pages/shop/index",
+        "text": "商城",
+        "iconPath": "static/tab/shop.png",
+        "selectedIconPath": "static/tab/shop-active.png"
+      },
+      {
+        "pagePath": "pages/user/index",
+        "text": "我的",
+        "iconPath": "static/tab/user.png",
+        "selectedIconPath": "static/tab/user-active.png"
+      }
+    ]
+  }
+}

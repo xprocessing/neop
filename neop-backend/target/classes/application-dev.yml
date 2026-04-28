@@ -1,0 +1,29 @@
+neop:
+  jwt:
+    secret: neop-dev-jwt-secret-key-must-be-at-least-32-characters
+    mobile-expire: 604800000    # 7天（毫秒）
+    admin-expire: 7200000       # 2小时（毫秒）
+  encrypt:
+    key: neop-aes-encrypt-key-32chars
+  upload:
+    type: local                  # cos / oss / local
+    local-path: /data/neop/upload/
+    local-domain: http://localhost:8080
+    # 腾讯云COS配置
+    cos-secret-id: your_secret_id
+    cos-secret-key: your_secret_key
+    cos-region: ap-shanghai
+    cos-bucket: neop-prod-1234567890
+    cos-domain: https://cdn.gongziyu.com
+    # 阿里云OSS配置（备选）
+    # oss-endpoint: https://oss-cn-hangzhou.aliyuncs.com
+    # oss-access-key-id: your_access_key_id
+    # oss-access-key-secret: your_access_key_secret
+    # oss-bucket-name: neop-prod
+    # oss-domain: https://cdn.gongziyu.com
+  wechat:
+    mp-appid: your_mp_appid
+    mp-secret: your_mp_secret
+    mch-id: your_mch_id
+    api-key: your_api_key
+    cert-path: classpath:cert/apiclient_cert.p12
