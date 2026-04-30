@@ -9,6 +9,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
  * 全局异常处理器（文档20.2节）
@@ -89,6 +90,16 @@ public class GlobalExceptionHandler {
     public Result<Void> handleDataAccessException(DataAccessException e) {
         log.error("[数据库异常]", e);
         return Result.error(500, "数据库操作异常，请联系管理员");
+    }
+
+    /**
+     * 404资源未找到
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public Result<Void> handleNoResourceFoundException(NoResourceFoundException e) {
+        log.warn("[404] {}", e.getResourcePath());
+        return Result.error(404, "接口不存在");
     }
 
     /**

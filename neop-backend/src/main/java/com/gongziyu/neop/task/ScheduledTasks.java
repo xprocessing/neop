@@ -84,23 +84,23 @@ public class ScheduledTasks {
         stat.setStatDate(yesterday);
 
         // 当日注册人数
-        stat.setRegisterNum((int) userInfoMapper.selectCount(
-                new LambdaQueryWrapper<UserInfo>().ge(UserInfo::getCreateTime, dayStart).lt(UserInfo::getCreateTime, dayEnd)));
+        stat.setRegisterNum(userInfoMapper.selectCount(
+                new LambdaQueryWrapper<UserInfo>().ge(UserInfo::getCreateTime, dayStart).lt(UserInfo::getCreateTime, dayEnd)).intValue());
 
         // 当日活跃人数（简化：领取任务的用户数）
-        stat.setActiveNum((int) taskUserReceiveMapper.selectCount(
-                new LambdaQueryWrapper<TaskUserReceive>().ge(TaskUserReceive::getCreateTime, dayStart).lt(TaskUserReceive::getCreateTime, dayEnd)));
+        stat.setActiveNum(taskUserReceiveMapper.selectCount(
+                new LambdaQueryWrapper<TaskUserReceive>().ge(TaskUserReceive::getCreateTime, dayStart).lt(TaskUserReceive::getCreateTime, dayEnd)).intValue());
 
         // 当日订单数
-        stat.setOrderNum((int) orderMapper.selectCount(
-                new LambdaQueryWrapper<Order>().eq(Order::getStatus, 3).ge(Order::getPayTime, dayStart).lt(Order::getPayTime, dayEnd)));
+        stat.setOrderNum(orderMapper.selectCount(
+                new LambdaQueryWrapper<Order>().eq(Order::getStatus, 3).ge(Order::getPayTime, dayStart).lt(Order::getPayTime, dayEnd)).intValue());
 
         // 当日订单金额（简化）
         stat.setOrderAmount(BigDecimal.ZERO);
 
         // 当日完成任务数
-        stat.setTaskNum((int) taskUserReceiveMapper.selectCount(
-                new LambdaQueryWrapper<TaskUserReceive>().eq(TaskUserReceive::getAuditStatus, 3).ge(TaskUserReceive::getUpdateTime, dayStart).lt(TaskUserReceive::getUpdateTime, dayEnd)));
+        stat.setTaskNum(taskUserReceiveMapper.selectCount(
+                new LambdaQueryWrapper<TaskUserReceive>().eq(TaskUserReceive::getAuditStatus, 3).ge(TaskUserReceive::getUpdateTime, dayStart).lt(TaskUserReceive::getUpdateTime, dayEnd)).intValue());
 
         // 当日打款金额（简化）
         stat.setTaskPayAmount(BigDecimal.ZERO);

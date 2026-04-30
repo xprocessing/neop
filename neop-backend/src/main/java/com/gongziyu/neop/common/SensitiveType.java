@@ -1,4 +1,4 @@
-package com.gongziyu.neop.common.SensitiveType;
+package com.gongziyu.neop.common;
 
 /**
  * 敏感数据脱敏类型枚举（文档8.1.4节）

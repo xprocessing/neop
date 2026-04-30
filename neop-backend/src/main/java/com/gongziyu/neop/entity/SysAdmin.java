@@ -1,7 +1,7 @@
 package com.gongziyu.neop.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.fasterxml.jackson.annotationJsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.gongziyu.neop.entity.base.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;

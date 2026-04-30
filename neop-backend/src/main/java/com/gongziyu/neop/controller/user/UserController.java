@@ -3,6 +3,7 @@ package com.gongziyu.neop.controller.user;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.gongziyu.neop.common.PageDTO;
 import com.gongziyu.neop.common.Result;
+import com.gongziyu.neop.entity.PointUser;
 import com.gongziyu.neop.entity.UserInfo;
 import com.gongziyu.neop.service.PointService;
 import com.gongziyu.neop.service.UserService;
@@ -72,7 +73,7 @@ public class UserController {
         // 通过PointLog Mapper查询分页
         IPage<Map<String, Object>> page = pointService.getBaseMapper()
                 .selectMapsPage(pageDTO.getPage(),
-                        new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>()
+                        new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<PointUser>()
                                 .eq("user_id", userId)
                                 .eq(type != null, "type", type)
                                 .orderByDesc("create_time"));

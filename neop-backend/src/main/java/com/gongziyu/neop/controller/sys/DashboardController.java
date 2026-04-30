@@ -1,6 +1,8 @@
 package com.gongziyu.neop.controller.sys;
 
 import com.gongziyu.neop.common.Result;
+import com.gongziyu.neop.entity.TaskUserReceive;
+import com.gongziyu.neop.entity.UserInfo;
 import com.gongziyu.neop.mapper.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
