@@ -47,7 +47,9 @@ CREATE TABLE sys_role_menu (
     id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主键ID',
     role_id BIGINT NOT NULL COMMENT '角色ID',
     menu_id BIGINT NOT NULL COMMENT '菜单ID',
+    deleted TINYINT NOT NULL DEFAULT 0 COMMENT '逻辑删除：0正常 1删除',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     UNIQUE KEY uk_role_menu (role_id,menu_id),
     INDEX idx_role_id (role_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='角色菜单关联表';
@@ -70,7 +72,9 @@ CREATE TABLE sys_admin_role (
     id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主键ID',
     admin_id BIGINT NOT NULL COMMENT '管理员ID',
     role_id BIGINT NOT NULL COMMENT '角色ID',
+    deleted TINYINT NOT NULL DEFAULT 0 COMMENT '逻辑删除：0正常 1删除',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     UNIQUE KEY uk_admin_role (admin_id,role_id),
     INDEX idx_admin_id (admin_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='管理员角色关联表';
@@ -131,7 +135,9 @@ CREATE TABLE sys_operation_log (
     status TINYINT NOT NULL DEFAULT 1 COMMENT '状态：1成功 0失败',
     error_msg TEXT COMMENT '错误信息',
     cost_time BIGINT DEFAULT 0 COMMENT '耗时(毫秒)',
+    deleted TINYINT NOT NULL DEFAULT 0 COMMENT '逻辑删除：0正常 1删除',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     INDEX idx_operator (operator_type, operator_id),
     INDEX idx_create_time (create_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统操作日志表';
@@ -238,7 +244,9 @@ CREATE TABLE point_log (
     type TINYINT NOT NULL DEFAULT 1 COMMENT '类型：1获取 2消耗',
     source VARCHAR(50) DEFAULT '' COMMENT '来源：sign签到/invite邀请/member会员/give赠送',
     remark VARCHAR(255) DEFAULT '' COMMENT '变动备注',
+    deleted TINYINT NOT NULL DEFAULT 0 COMMENT '逻辑删除：0正常 1删除',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     INDEX idx_user_id (user_id),
     INDEX idx_user_create (user_id, create_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='积分流水记录表';
@@ -263,7 +271,9 @@ CREATE TABLE invite_reward_log (
     reward_type TINYINT NOT NULL DEFAULT 1 COMMENT '奖励类型：1积分',
     reward_num INT NOT NULL DEFAULT 0 COMMENT '奖励数量',
     remark VARCHAR(255) DEFAULT '' COMMENT '奖励备注',
+    deleted TINYINT NOT NULL DEFAULT 0 COMMENT '逻辑删除：0正常 1删除',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     INDEX idx_user_id (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='邀请奖励记录表';
 
@@ -373,7 +383,9 @@ CREATE TABLE order_product (
     price DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT '下单单价',
     num INT NOT NULL DEFAULT 1 COMMENT '购买数量',
     subtotal_amount DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT '小计金额',
+    deleted TINYINT NOT NULL DEFAULT 0 COMMENT '逻辑删除：0正常 1删除',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     INDEX idx_order_id (order_id),
     INDEX idx_product_id (product_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单明细表';
@@ -428,7 +440,9 @@ CREATE TABLE task_submit (
     submit_images VARCHAR(1000) DEFAULT '' COMMENT '提交截图，逗号分隔',
     submit_note VARCHAR(500) DEFAULT '' COMMENT '提交备注',
     audit_note VARCHAR(500) DEFAULT '' COMMENT '审核备注',
+    deleted TINYINT NOT NULL DEFAULT 0 COMMENT '逻辑删除：0正常 1删除',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '提交时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     audit_time DATETIME NULL COMMENT '审核时间',
     INDEX idx_receive_id (receive_id),
     INDEX idx_user_id (user_id)
@@ -506,7 +520,7 @@ INSERT INTO sys_role (role_name, role_key, sort, status) VALUES
 
 -- 4. 管理员 admin / admin123 (BCrypt加密)
 INSERT INTO sys_admin (username, password, nickname, status) VALUES
-('admin','$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH','超级管理员',1);
+('admin','$2a$10$wpd3rhbrK6TV/POzp025sOJVYzMSmE1RwpBpytuEqTMCxg7pHxE6m','超级管理员',1);
 
 -- 5. 绑定角色
 INSERT INTO sys_admin_role (admin_id, role_id) VALUES (1,1);

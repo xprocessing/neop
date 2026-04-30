@@ -15,7 +15,7 @@
         :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
         border
       >
-        <el-table-column prop="name" label="分类名称" min-width="150" />
+        <el-table-column prop="categoryName" label="分类名称" min-width="150" />
         <el-table-column prop="icon" label="图标" width="80" align="center">
           <template #default="{ row }">
             <i v-if="row.icon" :class="row.icon"></i>
@@ -44,7 +44,7 @@
           <el-tree-select
             v-model="form.parentId"
             :data="categoryTree"
-            :props="{ label: 'name', value: 'id', children: 'children' }"
+            :props="{ label: 'categoryName', value: 'id', children: 'children' }"
             placeholder="请选择上级分类"
             check-strictly
             clearable
@@ -99,7 +99,7 @@ const rules = {
 const loadCategoryList = async () => {
   loading.value = true
   try {
-    const res = await request({ url: '/shop/category/list', method: 'GET' })
+    const res = await request({ url: '/admin/shop/category/tree', method: 'GET' })
     if (res.code === 200) {
       categoryList.value = res.data
     }
@@ -110,9 +110,9 @@ const loadCategoryList = async () => {
 
 const loadCategoryTree = async () => {
   try {
-    const res = await request({ url: '/shop/category/tree', method: 'GET' })
+    const res = await request({ url: '/admin/shop/category/tree', method: 'GET' })
     if (res.code === 200) {
-      categoryTree.value = [{ id: 0, name: '根分类', children: res.data }]
+      categoryTree.value = [{ id: 0, categoryName: '根分类', children: res.data }]
     }
   } catch (error) {
     console.error('加载分类树失败', error)
@@ -132,7 +132,14 @@ const handleAddChild = (row) => {
 }
 
 const handleEdit = (row) => {
-  form.value = { ...row }
+  form.value = {
+    id: row.id,
+    parentId: row.parentId,
+    name: row.categoryName || row.name,
+    icon: row.icon || '',
+    sort: row.sort || 0,
+    status: row.status != null ? row.status : 1
+  }
   dialogTitle.value = '编辑分类'
   dialogVisible.value = true
 }
@@ -140,7 +147,7 @@ const handleEdit = (row) => {
 const handleDelete = async (row) => {
   try {
     await ElMessageBox.confirm('确定删除该分类吗？', '提示', { type: 'warning' })
-    const res = await request({ url: `/shop/category/delete/${row.id}`, method: 'DELETE' })
+    const res = await request({ url: `/admin/shop/category/delete?id=${row.id}`, method: 'post' })
     if (res.code === 200) {
       ElMessage.success('删除成功')
       loadCategoryList()
@@ -155,9 +162,9 @@ const handleDelete = async (row) => {
 const handleStatusChange = async (row) => {
   try {
     await request({
-      url: '/shop/category/update',
-      method: 'PUT',
-      data: row
+      url: '/admin/shop/category/update',
+      method: 'post',
+      data: { id: row.id, categoryName: row.categoryName, sort: row.sort, status: row.status }
     })
     ElMessage.success('更新成功')
   } catch (error) {
@@ -169,9 +176,14 @@ const handleStatusChange = async (row) => {
 const handleSubmit = async () => {
   await formRef.value.validate(async (valid) => {
     if (valid) {
-      const url = form.value.id ? '/shop/category/update' : '/shop/category/add'
-      const method = form.value.id ? 'PUT' : 'POST'
-      const res = await request({ url, method, data: form.value })
+      const url = form.value.id ? '/admin/shop/category/update' : '/admin/shop/category/save'
+      const postData = {
+        ...form.value,
+        categoryName: form.value.name
+      }
+      delete postData.name
+      delete postData.icon
+      const res = await request({ url, method: 'post', data: postData })
       if (res.code === 200) {
         ElMessage.success(form.value.id ? '更新成功' : '新增成功')
         dialogVisible.value = false

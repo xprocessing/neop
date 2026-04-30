@@ -197,9 +197,20 @@ const loadAuditList = async () => {
     if (queryParams.value.userId) params.userId = queryParams.value.userId
     if (queryParams.value.status) params.status = queryParams.value.status
     
-    const res = await request({ url: '/task/receive/list', method: 'GET', params })
+    const res = await request({ url: '/admin/task/audit/list', method: 'GET', params })
     if (res.code === 200) {
-      auditList.value = res.data.list
+      auditList.value = (res.data.records || []).map(item => ({
+        id: item.receive?.id,
+        taskId: item.receive?.taskId,
+        taskTitle: item.task?.taskTitle,
+        userId: item.receive?.userId,
+        completedCount: 1,
+        completedLink: item.submit?.submitNote || '',
+        images: item.submit?.submitImages || '',
+        status: item.receive?.auditStatus,
+        submitTime: item.receive?.createTime,
+        unitPrice: item.task?.rewardAmount
+      }))
       total.value = res.data.total
     }
   } finally {
@@ -255,10 +266,14 @@ const handleAudit = (row) => {
 
 const handleAuditSubmit = async () => {
   try {
+    const url = auditForm.value.auditStatus === 2 ? '/admin/task/audit/reject' : '/admin/task/audit/pass'
+    const data = auditForm.value.auditStatus === 2
+      ? { receiveId: auditForm.value.receiveId, auditNote: auditForm.value.auditRemark }
+      : { receiveId: auditForm.value.receiveId }
     const res = await request({
-      url: '/task/receive/audit',
-      method: 'PUT',
-      data: auditForm.value
+      url,
+      method: 'post',
+      data
     })
     if (res.code === 200) {
       ElMessage.success('审核成功')
@@ -282,8 +297,8 @@ const handleSettle = (row) => {
 const handleSettleSubmit = async () => {
   try {
     const res = await request({
-      url: '/task/receive/settle',
-      method: 'PUT',
+      url: '/admin/task/grant/pay',
+      method: 'post',
       data: settleForm.value
     })
     if (res.code === 200) {

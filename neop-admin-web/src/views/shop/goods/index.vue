@@ -131,6 +131,7 @@ import request from '@/utils/request'
 const loading = ref(false)
 const goodsList = ref([])
 const categoryList = ref([])
+const categoryNameMap = ref({})
 const total = ref(0)
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
@@ -168,13 +169,34 @@ const rules = {
 const loadGoodsList = async () => {
   loading.value = true
   try {
+    const params = {
+      pageNum: queryParams.value.pageNum,
+      pageSize: queryParams.value.pageSize,
+      productName: queryParams.value.title || undefined,
+      status: queryParams.value.status !== null ? queryParams.value.status : undefined
+    }
     const res = await request({
-      url: '/shop/goods/list',
+      url: '/admin/shop/goods/list',
       method: 'GET',
-      params: queryParams.value
+      params
     })
     if (res.code === 200) {
-      goodsList.value = res.data.list
+      goodsList.value = (res.data.records || []).map(item => ({
+        id: item.id,
+        title: item.productName,
+        categoryId: item.categoryId,
+        categoryName: categoryNameMap.value[item.categoryId] || '',
+        mainImage: item.productImg || '',
+        images: item.productImages ? item.productImages.split(',') : [],
+        price: item.price,
+        originalPrice: item.originalPrice,
+        stock: item.stock,
+        salesCount: item.sales || 0,
+        description: '',
+        detail: item.content || '',
+        status: item.status,
+        createTime: item.createTime
+      }))
       total.value = res.data.total
     }
   } finally {
@@ -182,11 +204,24 @@ const loadGoodsList = async () => {
   }
 }
 
+const flattenTree = (nodes) => {
+  let result = []
+  for (const node of nodes) {
+    result.push(node)
+    if (node.children && node.children.length) {
+      result = result.concat(flattenTree(node.children))
+    }
+  }
+  return result
+}
+
 const loadCategoryList = async () => {
   try {
-    const res = await request({ url: '/shop/category/list', method: 'GET' })
+    const res = await request({ url: '/admin/shop/category/tree', method: 'GET' })
     if (res.code === 200) {
-      categoryList.value = res.data
+      const flat = flattenTree(res.data || [])
+      categoryList.value = flat
+      flat.forEach(cat => { categoryNameMap.value[cat.id] = cat.name })
     }
   } catch (error) {
     console.error('加载分类失败', error)
@@ -215,7 +250,7 @@ const handleView = (row) => {
 const handleDelete = async (row) => {
   try {
     await ElMessageBox.confirm('确定删除该商品吗？', '提示', { type: 'warning' })
-    const res = await request({ url: `/shop/goods/delete/${row.id}`, method: 'DELETE' })
+    const res = await request({ url: `/admin/shop/goods/delete?id=${row.id}`, method: 'post' })
     if (res.code === 200) {
       ElMessage.success('删除成功')
       loadGoodsList()
@@ -230,8 +265,8 @@ const handleDelete = async (row) => {
 const handleStatusChange = async (row) => {
   try {
     await request({
-      url: '/shop/goods/update',
-      method: 'PUT',
+      url: '/admin/shop/goods/update',
+      method: 'post',
       data: row
     })
     ElMessage.success('更新成功')
@@ -244,10 +279,23 @@ const handleStatusChange = async (row) => {
 const handleSubmit = async () => {
   await formRef.value.validate(async (valid) => {
     if (valid) {
-      form.value.images = imagesInput.value ? imagesInput.value.split(',') : []
-      const url = form.value.id ? '/shop/goods/update' : '/shop/goods/add'
-      const method = form.value.id ? 'PUT' : 'POST'
-      const res = await request({ url, method, data: form.value })
+      const url = form.value.id ? '/admin/shop/goods/update' : '/admin/shop/goods/save'
+      const postData = {
+        ...form.value,
+        productName: form.value.title,
+        productImg: form.value.mainImage,
+        productImages: imagesInput.value ? imagesInput.value.split(',').join(',') : '',
+        content: form.value.detail
+      }
+      delete postData.title
+      delete postData.mainImage
+      delete postData.images
+      delete postData.description
+      delete postData.detail
+      delete postData.salesCount
+      delete postData.categoryName
+      delete postData.createTime
+      const res = await request({ url, method: 'post', data: postData })
       if (res.code === 200) {
         ElMessage.success(form.value.id ? '更新成功' : '新增成功')
         dialogVisible.value = false
@@ -283,9 +331,9 @@ const handleCurrentChange = (val) => {
   loadGoodsList()
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await loadCategoryList()
   loadGoodsList()
-  loadCategoryList()
 })
 </script>
 

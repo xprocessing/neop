@@ -150,7 +150,7 @@ const loadUserList = async () => {
   loading.value = true
   try {
     const res = await request({
-      url: '/user/list',
+      url: '/admin/user/list',
       method: 'GET',
       params: queryParams.value
     })
@@ -195,7 +195,7 @@ const handleEdit = (row) => {
 const handleStatusChange = async (row) => {
   try {
     await request({
-      url: '/user/update',
+      url: '/admin/user/update',
       method: 'PUT',
       data: row
     })
@@ -210,7 +210,7 @@ const handleResetPassword = async (row) => {
   try {
     await ElMessageBox.confirm('确定重置该用户的密码吗？重置后密码为123456', '提示', { type: 'warning' })
     const res = await request({
-      url: `/user/reset-password/${row.id}`,
+      url: `/admin/user/reset-password/${row.id}`,
       method: 'PUT'
     })
     if (res.code === 200) {
@@ -226,7 +226,7 @@ const handleResetPassword = async (row) => {
 const handleSubmit = async () => {
   await formRef.value.validate(async (valid) => {
     if (valid) {
-      const url = form.value.id ? '/user/update' : '/user/add'
+      const url = form.value.id ? '/admin/user/update' : '/admin/user/add'
       const method = form.value.id ? 'PUT' : 'POST'
       const res = await request({ url, method, data: form.value })
       if (res.code === 200) {

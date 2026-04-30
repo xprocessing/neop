@@ -14,7 +14,7 @@
         </el-card>
       </el-col>
     </el-row>
-    
+
     <!-- 图表区域 -->
     <el-row :gutter="20" style="margin-top: 20px;">
       <el-col :span="16">
@@ -28,7 +28,7 @@
         </el-card>
       </el-col>
     </el-row>
-    
+
     <!-- 最近数据 -->
     <el-row :gutter="20" style="margin-top: 20px;">
       <el-col :span="12">
@@ -72,16 +72,15 @@ onMounted(() => {
 
 const loadDashboardData = async () => {
   try {
-    const res = await request.get('/sys/dashboard/overview')
+    const res = await request.get('/admin/dashboard')
     if (res.code === 200) {
       const data = res.data
-      statCards.value[0].value = data.today.newUserCount || 0
-      statCards.value[1].value = `¥${data.today.gmv || 0}`
-      statCards.value[2].value = data.today.taskReceiveCount || 0
-      statCards.value[3].value = `¥${data.today.withdrawAmount || 0}`
-      
-      latestUsers.value = data.latestUsers || []
-      latestOrders.value = data.latestOrders || []
+      statCards.value = [
+        { title: '新增用户', value: data.todayNewUsers || 0, icon: 'User', color: '#409eff' },
+        { title: '今日GMV', value: `¥${data.todayOrderAmount || 0}`, icon: 'Money', color: '#67c23a' },
+        { title: '任务领取', value: data.todayActiveUsers || 0, icon: 'Tickets', color: '#e6a23c' },
+        { title: '提现金额', value: `¥${data.todayPayAmount || 0}`, icon: 'Wallet', color: '#f56c6c' }
+      ]
     }
   } catch (err) {
     console.error('加载数据看板失败', err)

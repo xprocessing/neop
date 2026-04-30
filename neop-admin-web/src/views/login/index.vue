@@ -49,11 +49,25 @@ const handleLogin = async () => {
       try {
         const res = await request.post('/admin/login', loginForm)
         if (res.code === 200) {
-          localStorage.setItem('token', res.data.token)
-          localStorage.setItem('refreshToken', res.data.refreshToken)
-          localStorage.setItem('userInfo', JSON.stringify(res.data.admin))
-          localStorage.setItem('permissions', JSON.stringify(res.data.permissions))
-          
+          const data = res.data
+          localStorage.setItem('token', data.token)
+          if (data.adminInfo) {
+            localStorage.setItem('userInfo', JSON.stringify(data.adminInfo))
+          }
+          if (data.permissions) {
+            localStorage.setItem('permissions', JSON.stringify(data.permissions))
+          }
+
+          // 获取权限列表
+          try {
+            const infoRes = await request.get('/admin/info')
+            if (infoRes.code === 200 && infoRes.data.permissions) {
+              localStorage.setItem('permissions', JSON.stringify(infoRes.data.permissions))
+            }
+          } catch {
+            // 权限获取失败不影响登录
+          }
+
           ElMessage.success('登录成功')
           router.push('/dashboard')
         } else {

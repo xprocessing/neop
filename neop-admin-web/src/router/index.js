@@ -21,7 +21,7 @@ const routes = [
         path: 'dashboard',
         name: 'Dashboard',
         component: () => import('@/views/dashboard/index.vue'),
-        meta: { title: '数据看板', requiresAuth: true, permissions: ['dashboard:view'] }
+        meta: { title: '数据看板', requiresAuth: true, permissions: ['stat:dashboard'] }
       },
       // 个人中心
       {
@@ -41,49 +41,49 @@ const routes = [
         path: 'system/menu',
         name: 'SysMenu',
         component: () => import('@/views/system/menu/index.vue'),
-        meta: { title: '菜单管理', requiresAuth: true, permissions: ['system:menu:list'] }
+        meta: { title: '菜单管理', requiresAuth: true, permissions: ['sys:menu:list'] }
       },
       {
         path: 'system/role',
         name: 'SysRole',
         component: () => import('@/views/system/role/index.vue'),
-        meta: { title: '角色管理', requiresAuth: true, permissions: ['system:role:list'] }
+        meta: { title: '角色管理', requiresAuth: true, permissions: ['sys:role:list'] }
       },
       {
         path: 'system/admin',
         name: 'SysAdmin',
         component: () => import('@/views/system/admin/index.vue'),
-        meta: { title: '管理员管理', requiresAuth: true, permissions: ['system:admin:list'] }
+        meta: { title: '管理员管理', requiresAuth: true, permissions: ['sys:admin:list'] }
       },
       {
         path: 'system/dict',
         name: 'SysDict',
         component: () => import('@/views/system/dict/index.vue'),
-        meta: { title: '字典管理', requiresAuth: true, permissions: ['system:dict:list'] }
+        meta: { title: '字典管理', requiresAuth: true, permissions: ['sys:dict:list'] }
       },
       {
         path: 'system/config',
         name: 'SysConfig',
         component: () => import('@/views/system/config/index.vue'),
-        meta: { title: '配置管理', requiresAuth: true, permissions: ['system:config:list'] }
+        meta: { title: '配置管理', requiresAuth: true, permissions: ['sys:config:list'] }
       },
       {
         path: 'system/log',
         name: 'SysLog',
         component: () => import('@/views/system/log/index.vue'),
-        meta: { title: '操作日志', requiresAuth: true, permissions: ['system:log:list'] }
+        meta: { title: '操作日志', requiresAuth: true, permissions: ['sys:log:list'] }
       },
       {
         path: 'system/operation-log',
         name: 'SysOperationLog',
         component: () => import('@/views/system/operation-log/index.vue'),
-        meta: { title: '操作日志明细', requiresAuth: true, permissions: ['system:operation-log:list'] }
+        meta: { title: '操作日志明细', requiresAuth: true, permissions: ['sys:operation-log:list'] }
       },
       {
         path: 'system/login-log',
         name: 'SysLoginLog',
         component: () => import('@/views/system/login-log/index.vue'),
-        meta: { title: '登录日志', requiresAuth: true, permissions: ['system:login-log:list'] }
+        meta: { title: '登录日志', requiresAuth: true, permissions: ['sys:login-log:list'] }
       },
       // 用户管理
       {
@@ -97,7 +97,7 @@ const routes = [
         path: 'marketing/package',
         name: 'MemberPackage',
         component: () => import('@/views/marketing/package/index.vue'),
-        meta: { title: '会员套餐', requiresAuth: true, permissions: ['marketing:package:list'] }
+        meta: { title: '会员套餐', requiresAuth: true, permissions: ['market:package:list'] }
       },
       // 电商管理
       {
@@ -109,8 +109,8 @@ const routes = [
       {
         path: 'shop/product',
         name: 'Product',
-        component: () => import('@/views/shop/product/index.vue'),
-        meta: { title: '商品管理', requiresAuth: true, permissions: ['shop:product:list'] }
+        component: () => import('@/views/shop/goods/index.vue'),
+        meta: { title: '商品管理', requiresAuth: true, permissions: ['shop:goods:list'] }
       },
       {
         path: 'shop/order',
@@ -123,7 +123,7 @@ const routes = [
         path: 'task/config',
         name: 'TaskConfig',
         component: () => import('@/views/task/config/index.vue'),
-        meta: { title: '任务配置', requiresAuth: true, permissions: ['task:config:list'] }
+        meta: { title: '任务配置', requiresAuth: true, permissions: ['task:info:list'] }
       },
       {
         path: 'task/audit',
@@ -160,7 +160,12 @@ router.beforeEach((to, from, next) => {
     }
     
     // 权限校验（简化版）
-    const permissions = JSON.parse(localStorage.getItem('permissions') || '[]')
+    let permissions = []
+    try {
+      permissions = JSON.parse(localStorage.getItem('permissions') || '[]')
+    } catch {
+      permissions = []
+    }
     if (to.meta.permissions && to.meta.permissions.length > 0) {
       const hasPermission = to.meta.permissions.some(p => permissions.includes(p))
       if (!hasPermission) {

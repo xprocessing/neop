@@ -50,6 +50,7 @@ com/gongziyu/neop/mapper/SysOperationLogMapper.class
 com/gongziyu/neop/controller/sys/SysConfigController.class
 com/gongziyu/neop/mapper/UserAddressMapper.class
 com/gongziyu/neop/mapper/SysRoleMapper.class
+com/gongziyu/neop/controller/sys/SysRoleController.class
 com/gongziyu/neop/controller/marketing/MemberPackageController.class
 com/gongziyu/neop/controller/sys/SysAdminController$PasswordDTO.class
 com/gongziyu/neop/util/OrderNoUtil.class
@@ -65,6 +66,7 @@ com/gongziyu/neop/service/UserAddressService.class
 com/gongziyu/neop/config/MybatisPlusConfig.class
 com/gongziyu/neop/service/impl/DataStatisticsServiceImpl.class
 com/gongziyu/neop/controller/trade/ShopController$CartAddDTO.class
+com/gongziyu/neop/controller/sys/AdminUserController.class
 com/gongziyu/neop/mapper/MemberUserMapper.class
 com/gongziyu/neop/service/DataStatisticsService.class
 com/gongziyu/neop/controller/task/TaskController$TaskUpdateDTO.class
@@ -109,6 +111,7 @@ com/gongziyu/neop/service/ShopService.class
 com/gongziyu/neop/controller/sys/DashboardController.class
 com/gongziyu/neop/util/AesEncryptUtil.class
 com/gongziyu/neop/service/impl/MemberPackageServiceImpl.class
+com/gongziyu/neop/controller/sys/SysMenuController.class
 com/gongziyu/neop/mapper/PointLogMapper.class
 com/gongziyu/neop/service/UserService.class
 com/gongziyu/neop/entity/UserAddress.class

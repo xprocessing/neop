@@ -9,6 +9,7 @@
 /Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/service/PointService.java
 /Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/service/ShopService.java
 /Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/entity/PointUser.java
+/Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/controller/sys/SysMenuController.java
 /Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/util/AesEncryptUtil.java
 /Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/config/JwtInterceptor.java
 /Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/mapper/SysDictDataMapper.java
@@ -49,6 +50,7 @@
 /Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/mapper/InviteRewardLogMapper.java
 /Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/config/RateLimitAspect.java
 /Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/service/impl/MemberPackageServiceImpl.java
+/Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/controller/sys/SysRoleController.java
 /Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/entity/InviteRewardLog.java
 /Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/mapper/CartMapper.java
 /Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/mapper/SysAdminMapper.java
@@ -99,6 +101,7 @@
 /Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/service/MemberPackageService.java
 /Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/entity/PointLog.java
 /Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/mapper/OrderProductMapper.java
+/Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/controller/sys/AdminUserController.java
 /Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/entity/SysMenu.java
 /Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/entity/InviteUser.java
 /Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/service/impl/UserAddressServiceImpl.java

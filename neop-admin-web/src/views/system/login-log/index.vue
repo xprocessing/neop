@@ -101,18 +101,27 @@ const loadData = async () => {
     
     // 处理时间范围
     if (searchForm.timeRange && searchForm.timeRange.length === 2) {
-      params.startTime = searchForm.timeRange[0]
-      params.endTime = searchForm.timeRange[1]
+      params.startDate = searchForm.timeRange[0]
+      params.endDate = searchForm.timeRange[1]
       delete params.timeRange
     }
     
     const res = await request({
-      url: '/api/system/login-log/list',
+      url: '/admin/log/list',
       method: 'get',
       params
     })
     
-    tableData.value = res.data.list
+    tableData.value = (res.data.records || []).map(item => ({
+      username: item.operatorName || '',
+      ipAddress: item.ipAddress || '',
+      ipLocation: item.ipLocation || '',
+      browser: item.browser || '',
+      os: item.os || '',
+      status: item.status === 1 ? 'success' : 'fail',
+      message: item.description || '',
+      loginTime: item.createTime || ''
+    }))
     pagination.total = res.data.total
   } catch (error) {
     ElMessage.error(error.message || '加载失败')

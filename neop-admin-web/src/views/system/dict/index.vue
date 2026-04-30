@@ -154,9 +154,9 @@ const dataRules = {
 const loadTypeList = async () => {
   typeLoading.value = true
   try {
-    const res = await request({ url: '/system/dict/type/list', method: 'GET' })
+    const res = await request({ url: '/admin/dict/list', method: 'GET' })
     if (res.code === 200) {
-      typeList.value = res.data
+      typeList.value = res.data.records || []
     }
   } finally {
     typeLoading.value = false
@@ -166,9 +166,17 @@ const loadTypeList = async () => {
 const loadDataList = async (typeId) => {
   dataLoading.value = true
   try {
-    const res = await request({ url: `/system/dict/data/list/${typeId}`, method: 'GET' })
+    const res = await request({ url: `/admin/dict/data/list/${typeId}`, method: 'GET' })
     if (res.code === 200) {
-      dataList.value = res.data
+      dataList.value = (res.data || []).map(item => ({
+        id: item.id,
+        dictTypeId: item.dictId,
+        dictLabel: item.label,
+        dictValue: item.value,
+        color: item.color || '',
+        sort: item.sort || 0,
+        status: item.status != null ? item.status : 1
+      }))
     }
   } finally {
     dataLoading.value = false
@@ -198,7 +206,7 @@ const handleEditType = (row) => {
 const handleDeleteType = async (row) => {
   try {
     await ElMessageBox.confirm('确定删除该字典吗？', '提示', { type: 'warning' })
-    const res = await request({ url: `/system/dict/type/delete/${row.id}`, method: 'DELETE' })
+    const res = await request({ url: `/admin/dict/delete?id=${row.id}`, method: 'post' })
     if (res.code === 200) {
       ElMessage.success('删除成功')
       loadTypeList()
@@ -213,9 +221,8 @@ const handleDeleteType = async (row) => {
 const handleTypeSubmit = async () => {
   await typeFormRef.value.validate(async (valid) => {
     if (valid) {
-      const url = typeForm.value.id ? '/system/dict/type/update' : '/system/dict/type/add'
-      const method = typeForm.value.id ? 'PUT' : 'POST'
-      const res = await request({ url, method, data: typeForm.value })
+      const url = typeForm.value.id ? '/admin/dict/update' : '/admin/dict/save'
+      const res = await request({ url, method: 'post', data: typeForm.value })
       if (res.code === 200) {
         ElMessage.success(typeForm.value.id ? '更新成功' : '新增成功')
         typeDialogVisible.value = false
@@ -240,7 +247,7 @@ const handleEditData = (row) => {
 const handleDeleteData = async (row) => {
   try {
     await ElMessageBox.confirm('确定删除该字典数据吗？', '提示', { type: 'warning' })
-    const res = await request({ url: `/system/dict/data/delete/${row.id}`, method: 'DELETE' })
+    const res = await request({ url: `/admin/dict/data/delete?id=${row.id}`, method: 'post' })
     if (res.code === 200) {
       ElMessage.success('删除成功')
       loadDataList(currentTypeId.value)
@@ -255,9 +262,8 @@ const handleDeleteData = async (row) => {
 const handleDataSubmit = async () => {
   await dataFormRef.value.validate(async (valid) => {
     if (valid) {
-      const url = dataForm.value.id ? '/system/dict/data/update' : '/system/dict/data/add'
-      const method = dataForm.value.id ? 'PUT' : 'POST'
-      const res = await request({ url, method, data: dataForm.value })
+      const url = dataForm.value.id ? '/admin/dict/data/update' : '/admin/dict/data/save'
+      const res = await request({ url, method: 'post', data: dataForm.value })
       if (res.code === 200) {
         ElMessage.success(dataForm.value.id ? '更新成功' : '新增成功')
         dataDialogVisible.value = false

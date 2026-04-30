@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 字典管理接口
@@ -75,5 +76,49 @@ public class SysDictController {
                 .orderByAsc(SysDictData::getSort);
         List<SysDictData> list = sysDictDataMapper.selectList(dataWrapper);
         return Result.success(list);
+    }
+
+    // ===== 字典数据 CRUD =====
+
+    @GetMapping("/data/list/{dictId}")
+    public Result<List<SysDictData>> dataList(@PathVariable Long dictId) {
+        LambdaQueryWrapper<SysDictData> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(SysDictData::getDictId, dictId)
+                .orderByAsc(SysDictData::getSort);
+        return Result.success(sysDictDataMapper.selectList(wrapper));
+    }
+
+    @PostMapping("/data/save")
+    @OperationLog(module = "系统管理", description = "新增字典数据")
+    public Result<Void> dataSave(@RequestBody Map<String, Object> body) {
+        SysDictData data = new SysDictData();
+        data.setDictId(body.get("dictTypeId") != null ? ((Number) body.get("dictTypeId")).longValue() : null);
+        data.setLabel((String) body.getOrDefault("dictLabel", ""));
+        data.setValue((String) body.getOrDefault("dictValue", ""));
+        data.setSort(body.get("sort") != null ? ((Number) body.get("sort")).intValue() : 0);
+        data.setStatus(body.get("status") != null ? ((Number) body.get("status")).intValue() : 1);
+        sysDictDataMapper.insert(data);
+        return Result.success();
+    }
+
+    @PostMapping("/data/update")
+    @OperationLog(module = "系统管理", description = "编辑字典数据")
+    public Result<Void> dataUpdate(@RequestBody Map<String, Object> body) {
+        SysDictData data = new SysDictData();
+        data.setId(body.get("id") != null ? ((Number) body.get("id")).longValue() : null);
+        data.setDictId(body.get("dictTypeId") != null ? ((Number) body.get("dictTypeId")).longValue() : null);
+        data.setLabel((String) body.getOrDefault("dictLabel", ""));
+        data.setValue((String) body.getOrDefault("dictValue", ""));
+        data.setSort(body.get("sort") != null ? ((Number) body.get("sort")).intValue() : 0);
+        data.setStatus(body.get("status") != null ? ((Number) body.get("status")).intValue() : 1);
+        sysDictDataMapper.updateById(data);
+        return Result.success();
+    }
+
+    @PostMapping("/data/delete")
+    @OperationLog(module = "系统管理", description = "删除字典数据")
+    public Result<Void> dataDelete(@RequestParam Long id) {
+        sysDictDataMapper.deleteById(id);
+        return Result.success();
     }
 }

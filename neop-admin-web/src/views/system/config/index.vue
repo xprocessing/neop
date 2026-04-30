@@ -191,12 +191,12 @@ const loadData = async () => {
     }
     
     const res = await request({
-      url: '/api/system/config/list',
+      url: '/admin/config/list',
       method: 'get',
       params
     })
-    
-    tableData.value = res.data.list
+
+    tableData.value = res.data.records
     pagination.total = res.data.total
   } catch (error) {
     ElMessage.error(error.message || '加载失败')
@@ -240,8 +240,9 @@ const handleDelete = async (row) => {
     })
     
     await request({
-      url: `/api/system/config/delete/${row.id}`,
-      method: 'delete'
+      url: '/admin/config/delete',
+      method: 'post',
+      params: { id: row.id }
     })
     
     ElMessage.success('删除成功')
@@ -261,15 +262,15 @@ const handleSubmit = async () => {
     if (dialogForm.id) {
       // 编辑
       await request({
-        url: '/api/system/config/update',
-        method: 'put',
+        url: '/admin/config/update',
+        method: 'post',
         data: dialogForm
       })
       ElMessage.success('修改成功')
     } else {
       // 新增
       await request({
-        url: '/api/system/config/add',
+        url: '/admin/config/save',
         method: 'post',
         data: dialogForm
       })

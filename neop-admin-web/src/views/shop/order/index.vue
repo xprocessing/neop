@@ -184,7 +184,7 @@ const loadOrderList = async () => {
       params.endDate = queryParams.value.dateRange[1]
     }
     
-    const res = await request({ url: '/shop/order/list', method: 'GET', params })
+    const res = await request({ url: '/admin/shop/order/list', method: 'GET', params })
     if (res.code === 200) {
       orderList.value = res.data.list
       total.value = res.data.total
@@ -223,7 +223,7 @@ const resetQuery = () => {
 
 const handleView = async (row) => {
   try {
-    const res = await request({ url: `/shop/order/detail/${row.id}`, method: 'GET' })
+    const res = await request({ url: `/admin/shop/order/list/${row.id}`, method: 'GET' })
     if (res.code === 200) {
       orderDetail.value = res.data
       detailVisible.value = true
@@ -244,8 +244,8 @@ const handleShipSubmit = async () => {
     if (valid) {
       try {
         const res = await request({
-          url: '/shop/order/ship',
-          method: 'PUT',
+          url: '/admin/shop/order/send',
+          method: 'post',
           data: {
             orderId: currentOrderId.value,
             ...shipForm.value

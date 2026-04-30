@@ -164,12 +164,12 @@ const loadData = async () => {
     }
     
     const res = await request({
-      url: '/api/system/operation-log/list',
+      url: '/admin/log/list',
       method: 'get',
       params
     })
     
-    tableData.value = res.data.list
+    tableData.value = res.data.records
     pagination.total = res.data.total
   } catch (error) {
     ElMessage.error(error.message || '加载失败')

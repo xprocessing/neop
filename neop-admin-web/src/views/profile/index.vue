@@ -66,7 +66,7 @@ import request from '@/utils/request'
 const defaultAvatar = ref('https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png')
 
 // 上传地址
-const uploadUrl = ref('/api/upload/avatar')
+const uploadUrl = ref('/upload/avatar')
 
 // 表单数据
 const formRef = ref()
@@ -103,10 +103,11 @@ const rules = {
 const loadProfile = async () => {
   try {
     const res = await request({
-      url: '/api/profile/info',
+      url: '/admin/info',
       method: 'get'
     })
     Object.assign(form, res.data)
+    form.roleName = res.data.permissions && res.data.permissions.length > 0 ? '管理员' : '无角色'
   } catch (error) {
     ElMessage.error(error.message || '加载失败')
   }
@@ -138,8 +139,8 @@ const handleSubmit = async () => {
     await formRef.value.validate()
     
     await request({
-      url: '/api/profile/update',
-      method: 'put',
+      url: '/admin/update',
+      method: 'post',
       data: form
     })
     

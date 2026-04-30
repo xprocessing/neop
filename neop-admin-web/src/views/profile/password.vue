@@ -88,8 +88,8 @@ const handleSubmit = async () => {
     await formRef.value.validate()
     
     await request({
-      url: '/api/profile/change-password',
-      method: 'put',
+      url: '/admin/password',
+      method: 'post',
       data: {
         oldPassword: form.oldPassword,
         newPassword: form.newPassword
