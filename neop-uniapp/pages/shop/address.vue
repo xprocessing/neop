@@ -137,7 +137,7 @@ export default {
 		async loadAddressList() {
 			try {
 				const res = await request({
-					url: '/shop/address/list',
+					url: '/user/address/list',
 					method: 'GET'
 				})
 				if (res.code === 200) {
@@ -203,7 +203,7 @@ export default {
 			}
 
 			try {
-				const url = this.editingAddress.id ? '/shop/address/update' : '/shop/address/add'
+				const url = this.editingAddress.id ? '/user/address/update' : '/user/address/save'
 				const method = this.editingAddress.id ? 'PUT' : 'POST'
 				const res = await request({
 					url,
@@ -230,7 +230,7 @@ export default {
 					if (res.confirm) {
 						try {
 							const res = await request({
-								url: `/shop/address/delete/${address.id}`,
+								url: `/user/address/delete?id=${address.id}`,
 								method: 'DELETE'
 							})
 							if (res.code === 200) {

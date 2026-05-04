@@ -40,7 +40,7 @@ const wxLogin = () => {
         // 调用后端登录接口
         uni.request({
           url: 'https://api.gongziyu.com/api/user/wechat/login',
-          method: 'POST',
+          method: 'GET',
           data: { code: loginRes.code },
           success: (res) => {
             if (res.data.code === 200) {

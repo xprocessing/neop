@@ -82,6 +82,16 @@ public class UserAddressController {
     }
 
     /**
+     * 获取默认地址
+     */
+    @GetMapping("/default")
+    public Result<UserAddress> getDefault(HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        UserAddress address = userAddressService.getDefault(userId);
+        return Result.success(address);
+    }
+
+    /**
      * 设为默认地址
      */
     @PostMapping("/setDefault")

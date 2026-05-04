@@ -4,10 +4,13 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.gongziyu.neop.entity.UserAddress;
 
 import java.util.List;
+import com.gongziyu.neop.entity.UserAddress;
 
 public interface UserAddressService extends IService<UserAddress> {
 
     List<UserAddress> listByUserId(Long userId);
+
+    UserAddress getDefault(Long userId);
 
     void saveAddress(UserAddress address);
 

@@ -128,7 +128,7 @@ export default {
 				}
 				
 				const res = await request({
-					url: '/task/receive/my',
+					url: '/task/my/list',
 					method: 'GET',
 					data: {
 						status: statusMap[this.currentTab],
@@ -138,7 +138,7 @@ export default {
 				})
 				
 				if (res.code === 200) {
-					const list = res.data.list || res.data
+					const list = res.data.records || res.data
 					if (this.pageNum === 1) {
 						this.taskList = list
 					} else {

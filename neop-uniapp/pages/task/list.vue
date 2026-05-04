@@ -71,8 +71,8 @@ const loadTasks = async () => {
     
     const res = await request.get('/task/list', params)
     if (res.code === 200) {
-      taskList.value = [...taskList.value, ...res.data.list]
-      hasMore.value = res.data.list.length === pageSize
+      taskList.value = [...taskList.value, ...res.data.records]
+      hasMore.value = res.data.records.length === pageSize
     }
   } catch (err) {
     console.error('加载任务失败', err)

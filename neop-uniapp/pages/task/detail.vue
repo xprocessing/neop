@@ -94,7 +94,7 @@ const loadMyTask = async () => {
   try {
     const res = await request.get('/task/my/list')
     if (res.code === 200) {
-      myTask.value = res.data.list.find(t => t.taskId === taskId.value)
+      myTask.value = res.data.records.find(t => t.taskId === taskId.value)
     }
   } catch (err) {
     console.error('加载我的任务失败', err)

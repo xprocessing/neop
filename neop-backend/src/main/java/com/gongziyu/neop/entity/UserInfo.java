@@ -9,6 +9,7 @@ import lombok.EqualsAndHashCode;
 @EqualsAndHashCode(callSuper = true)
 @TableName("user_info")
 public class UserInfo extends BaseEntity {
+    private String password;
     private String nickname;
     private String avatar;
     private String phone;

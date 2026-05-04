@@ -139,17 +139,9 @@ export default {
 		async uploadImage(filePath) {
 			uni.showLoading({ title: '上传中...' })
 			try {
-				const res = await uni.uploadFile({
-					url: 'https://your-api.com/api/upload/image',
-					filePath: filePath,
-					name: 'file',
-					header: {
-						'Authorization': 'Bearer ' + uni.getStorageSync('token')
-					}
-				})
-				const data = JSON.parse(res.data)
-				if (data.code === 200) {
-					this.form.images.push(data.data.url)
+				const res = await request.upload('/upload/image', filePath)
+				if (res.code === 200) {
+					this.form.images.push(res.data.url)
 				}
 			} catch (error) {
 				uni.showToast({ title: '上传失败', icon: 'none' })
@@ -182,7 +174,7 @@ export default {
 			this.submitting = true
 			try {
 				const res = await request({
-					url: '/task/receive/submit',
+					url: '/task/submit',
 					method: 'POST',
 					data: {
 						receiveId: this.receiveId,

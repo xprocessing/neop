@@ -147,7 +147,7 @@ const sendCode = async () => {
   if (errors.value.phone) return
 
   try {
-    await request.post('/api/auth/send-code', { phone: phone.value })
+    await request.post('/auth/send-code', { phone: phone.value })
     uni.showToast({ title: '验证码已发送', icon: 'success' })
     
     // 开始倒计时
@@ -174,7 +174,7 @@ const handleLogin = async () => {
   try {
     uni.showLoading({ title: '登录中...' })
     
-    const res = await request.post('/api/auth/login', {
+    const res = await request.post('/auth/login', {
       phone: phone.value,
       code: code.value
     })

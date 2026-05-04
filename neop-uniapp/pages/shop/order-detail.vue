@@ -155,7 +155,7 @@ onLoad((options) => {
 const loadOrderDetail = async (orderId) => {
   try {
     uni.showLoading({ title: '加载中...' })
-    const res = await request.get(`/api/shop/order/detail/${orderId}`)
+    const res = await request.get(`/shop/order/info/${orderId}`)
     order.value = res.data
     uni.hideLoading()
   } catch (error) {
@@ -182,7 +182,7 @@ const cancelOrder = async () => {
     success: async (res) => {
       if (res.confirm) {
         try {
-          await request.post(`/api/shop/order/cancel/${order.value.id}`)
+          await request.post('/shop/order/cancel', { orderId: order.value.id })
           uni.showToast({ title: '订单已取消', icon: 'success' })
           loadOrderDetail(order.value.id)
         } catch (error) {
@@ -215,7 +215,7 @@ const confirmReceive = async () => {
     success: async (res) => {
       if (res.confirm) {
         try {
-          await request.post(`/api/shop/order/confirm/${order.value.id}`)
+          await request.post('/shop/order/confirm', { orderId: order.value.id })
           uni.showToast({ title: '确认收货成功', icon: 'success' })
           loadOrderDetail(order.value.id)
         } catch (error) {
@@ -241,7 +241,7 @@ const deleteOrder = async () => {
     success: async (res) => {
       if (res.confirm) {
         try {
-          await request.delete(`/api/shop/order/delete/${order.value.id}`)
+          await request.delete('/shop/order/delete', { data: { orderId: order.value.id } })
           uni.showToast({ title: '订单已删除', icon: 'success' })
           setTimeout(() => {
             uni.navigateBack()

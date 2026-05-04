@@ -58,6 +58,7 @@
 /Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/config/WebMvcConfig.java
 /Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/task/ScheduledTasks.java
 /Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/service/impl/WechatPayServiceImpl.java
+/Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/controller/MessageController.java
 /Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/mapper/PointLogMapper.java
 /Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/service/TaskService.java
 /Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/entity/UserAddress.java
@@ -76,6 +77,7 @@
 /Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/entity/SysRole.java
 /Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/service/impl/UserServiceImpl.java
 /Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/mapper/ProductCategoryMapper.java
+/Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/controller/AuthController.java
 /Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/service/impl/TaskServiceImpl.java
 /Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/util/JwtUtil.java
 /Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/mapper/UserAddressMapper.java
@@ -86,6 +88,7 @@
 /Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/service/UserAddressService.java
 /Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/entity/MemberPackage.java
 /Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/entity/SysAdmin.java
+/Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/controller/UploadController.java
 /Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/exception/BusinessException.java
 /Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/mapper/SysOperationLogMapper.java
 /Users/neo/Desktop/neop/neop-backend/src/main/java/com/gongziyu/neop/entity/SysRoleMenu.java

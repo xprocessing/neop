@@ -127,7 +127,7 @@ export default {
 		async loadGoodsDetail() {
 			try {
 				const res = await request({
-					url: `/shop/goods/detail/${this.goodsId}`,
+					url: `/shop/product/info/${this.goodsId}`,
 					method: 'GET'
 				})
 				if (res.code === 200) {
@@ -231,7 +231,7 @@ export default {
 		},
 		async toggleCollect() {
 			try {
-				const url = this.collected ? '/shop/goods/uncollect' : '/shop/goods/collect'
+				const url = this.collected ? '/shop/product/uncollect' : '/shop/product/collect'
 				const res = await request({
 					url,
 					method: 'POST',

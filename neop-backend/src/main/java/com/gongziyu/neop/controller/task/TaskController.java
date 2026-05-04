@@ -30,8 +30,9 @@ public class TaskController {
     // ===== 前台接口 =====
 
     @GetMapping("/api/task/list")
-    public Result<IPage<Map<String, Object>>> frontList(PageDTO pageDTO) {
-        return Result.success(taskService.frontList(pageDTO));
+    public Result<IPage<Map<String, Object>>> frontList(PageDTO pageDTO,
+                                                         @RequestParam(required = false) String keyword) {
+        return Result.success(taskService.frontList(pageDTO, keyword));
     }
 
     @GetMapping("/api/task/info/{taskId}")

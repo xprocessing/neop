@@ -91,6 +91,111 @@ public class UserController {
     }
 
     /**
+     * 更新用户信息
+     */
+    @PutMapping("/update")
+    public Result<Void> updateUser(@RequestBody Map<String, Object> body, HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        userService.updateUser(userId, body);
+        return Result.success();
+    }
+
+    /**
+     * 绑定手机号
+     */
+    @PostMapping("/bind-phone")
+    public Result<Void> bindPhone(@RequestBody Map<String, String> body, HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        String phone = body.get("phone");
+        userService.bindPhone(userId, phone);
+        return Result.success();
+    }
+
+    /**
+     * 刷新Token
+     */
+    @PostMapping("/refresh-token")
+    public Result<Map<String, Object>> refreshToken(@RequestBody Map<String, String> body) {
+        String refreshToken = body.get("refreshToken");
+        Map<String, Object> result = userService.refreshToken(refreshToken);
+        return Result.success(result);
+    }
+
+    // ===== 签到/积分/邀请（前台调用） =====
+
+    /**
+     * 签到信息
+     */
+    @GetMapping("/sign/info")
+    public Result<Map<String, Object>> signInfo(HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        return Result.success(pointService.signInfo(userId));
+    }
+
+    /**
+     * 执行签到
+     */
+    @PostMapping("/sign/do")
+    public Result<Map<String, Object>> signDo(HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        Integer point = pointService.sign(userId);
+        return Result.success(Map.of("point", point, "msg", "签到成功"));
+    }
+
+    /**
+     * 积分余额
+     */
+    @GetMapping("/points/balance")
+    public Result<Map<String, Object>> pointsBalance(HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        return Result.success(pointService.balance(userId));
+    }
+
+    /**
+     * 积分明细
+     */
+    @GetMapping("/points/detail")
+    public Result<IPage<Map<String, Object>>> pointsDetail(PageDTO pageDTO,
+                                                            @RequestParam(required = false) Integer type,
+                                                            HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        IPage<Map<String, Object>> page = pointService.getBaseMapper()
+                .selectMapsPage(pageDTO.getPage(),
+                        new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<PointUser>()
+                                .eq("user_id", userId)
+                                .eq(type != null, "type", type)
+                                .orderByDesc("create_time"));
+        return Result.success(page);
+    }
+
+    /**
+     * 邀请信息
+     */
+    @GetMapping("/invite/info")
+    public Result<Map<String, Object>> inviteInfo(HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        return Result.success(userService.inviteInfo(userId));
+    }
+
+    /**
+     * 邀请列表
+     */
+    @GetMapping("/invite/list")
+    public Result<IPage<Map<String, Object>>> inviteList(PageDTO pageDTO, HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        return Result.success(userService.inviteList(userId, pageDTO));
+    }
+
+    /**
+     * 邀请二维码
+     */
+    @GetMapping("/invite/qrcode")
+    public Result<Map<String, Object>> inviteQrcode(HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        return Result.success(userService.inviteQrcode(userId));
+    }
+
+    /**
      * 后台-用户管理列表
      */
     @GetMapping("/admin/list")

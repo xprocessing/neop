@@ -118,7 +118,7 @@ export default {
 			this.loadMoreStatus = 'loading'
 			try {
 				const res = await request({
-					url: '/shop/goods/list',
+					url: '/shop/product/list',
 					method: 'GET',
 					data: {
 						keyword: this.keyword,
@@ -129,7 +129,7 @@ export default {
 				})
 				
 				if (res.code === 200) {
-					const list = res.data.list || res.data
+					const list = res.data.records || res.data
 					if (this.pageNum === 1) {
 						this.goodsList = list
 					} else {

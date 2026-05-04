@@ -80,6 +80,14 @@ public class UserAddressServiceImpl extends ServiceImpl<UserAddressMapper, UserA
         updateById(update);
     }
 
+    @Override
+    public UserAddress getDefault(Long userId) {
+        LambdaQueryWrapper<UserAddress> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(UserAddress::getUserId, userId)
+                .eq(UserAddress::getIsDefault, 1);
+        return getOne(wrapper);
+    }
+
     private void cancelDefault(Long userId) {
         LambdaUpdateWrapper<UserAddress> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(UserAddress::getUserId, userId)

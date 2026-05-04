@@ -141,17 +141,9 @@ export default {
 		async uploadAvatar(filePath) {
 			uni.showLoading({ title: '上传中...' })
 			try {
-				const res = await uni.uploadFile({
-					url: 'https://your-api.com/api/upload/image',
-					filePath: filePath,
-					name: 'file',
-					header: {
-						'Authorization': 'Bearer ' + uni.getStorageSync('token')
-					}
-				})
-				const data = JSON.parse(res.data)
-				if (data.code === 200) {
-					this.userInfo.avatar = data.data.url
+				const res = await request.upload('/upload/image', filePath)
+				if (res.code === 200) {
+					this.userInfo.avatar = res.data.url
 					uni.showToast({ title: '上传成功', icon: 'success' })
 				}
 			} catch (error) {

@@ -226,7 +226,7 @@ const sendCode = async () => {
   if (errors.value.phone) return
 
   try {
-    await request.post('/api/auth/send-reset-code', { phone: phone.value })
+    await request.post('/auth/send-reset-code', { phone: phone.value })
     uni.showToast({ title: '验证码已发送', icon: 'success' })
     
     countdown.value = 60
@@ -253,7 +253,7 @@ const handleVerify = async () => {
   try {
     uni.showLoading({ title: '验证中...' })
     
-    await request.post('/api/auth/verify-phone', {
+    await request.post('/auth/verify-phone', {
       phone: phone.value,
       code: code.value
     })
@@ -278,7 +278,7 @@ const handleReset = async () => {
   try {
     uni.showLoading({ title: '重置中...' })
     
-    await request.post('/api/auth/reset-password', {
+    await request.post('/auth/reset-password', {
       phone: phone.value,
       password: password.value
     })

@@ -71,7 +71,7 @@ const loadHotTasks = async () => {
   try {
     const res = await request.get('/task/list', { page: 1, pageSize: 10 })
     if (res.code === 200) {
-      hotTasks.value = res.data.list
+      hotTasks.value = res.data.records
     }
   } catch (err) {
     console.error('加载热门任务失败', err)

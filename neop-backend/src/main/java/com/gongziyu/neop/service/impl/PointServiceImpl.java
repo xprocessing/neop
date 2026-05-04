@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -111,5 +112,25 @@ public class PointServiceImpl extends ServiceImpl<PointUserMapper, PointUser> im
 
         log.info("[签到] userId={}, rewardPoint={}", userId, Constants.SIGN_REWARD_POINT);
         return Constants.SIGN_REWARD_POINT;
+    }
+
+    @Override
+    public Map<String, Object> signInfo(Long userId) {
+        Map<String, Object> result = new java.util.HashMap<>();
+        result.put("signed", false);
+        result.put("todayPoint", Constants.SIGN_REWARD_POINT);
+        result.put("totalDays", 0);
+        return result;
+    }
+
+    @Override
+    public Map<String, Object> balance(Long userId) {
+        LambdaQueryWrapper<PointUser> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(PointUser::getUserId, userId);
+        PointUser pointUser = pointUserMapper.selectOne(wrapper);
+        Map<String, Object> result = new java.util.HashMap<>();
+        result.put("totalPoint", pointUser != null ? pointUser.getTotalPoint() : 0);
+        result.put("usablePoint", pointUser != null ? pointUser.getUsablePoint() : 0);
+        return result;
     }
 }

@@ -217,7 +217,7 @@ const sendCode = async () => {
   if (errors.value.phone) return
 
   try {
-    await request.post('/api/auth/send-code', { phone: phone.value })
+    await request.post('/auth/send-code', { phone: phone.value })
     uni.showToast({ title: '验证码已发送', icon: 'success' })
     
     countdown.value = 60
@@ -251,7 +251,7 @@ const handleRegister = async () => {
   try {
     uni.showLoading({ title: '注册中...' })
     
-    await request.post('/api/auth/register', {
+    await request.post('/auth/register', {
       phone: phone.value,
       code: code.value,
       password: password.value,

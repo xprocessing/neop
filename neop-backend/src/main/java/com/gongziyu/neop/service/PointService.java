@@ -3,6 +3,7 @@ package com.gongziyu.neop.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.gongziyu.neop.entity.PointLog;
 import com.gongziyu.neop.entity.PointUser;
+import java.util.Map;
 
 public interface PointService extends IService<PointUser> {
 
@@ -24,4 +25,14 @@ public interface PointService extends IService<PointUser> {
      * 签到
      */
     Integer sign(Long userId);
+
+    /**
+     * 签到信息
+     */
+    Map<String, Object> signInfo(Long userId);
+
+    /**
+     * 积分余额
+     */
+    Map<String, Object> balance(Long userId);
 }

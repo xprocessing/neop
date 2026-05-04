@@ -119,12 +119,12 @@ const switchCategory = (category) => {
 // 加载消息
 const loadMessages = async () => {
   try {
-    const res = await request.get('/api/message/list', {
+    const res = await request.get('/message/list', {
       category: activeCategory.value,
       page: 1,
       pageSize: 20
     })
-    messageList.value = res.data.list
+    messageList.value = res.data.records
   } catch (error) {
     console.error('加载消息失败', error)
   }
@@ -138,7 +138,7 @@ const readMessage = (item) => {
     unreadCount.value.all--
     
     // 调用API标记为已读
-    request.post(`/api/message/read/${item.id}`)
+    request.post(`/message/read/${item.id}`)
   }
   
   // 根据消息类型跳转
@@ -161,7 +161,7 @@ const readAll = async () => {
   }
   
   try {
-    await request.post('/api/message/read-all')
+    await request.post('/message/read-all')
     
     // 更新本地状态
     messageList.value.forEach(item => {

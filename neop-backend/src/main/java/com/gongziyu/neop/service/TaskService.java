@@ -12,7 +12,7 @@ import java.util.Map;
 public interface TaskService extends IService<TaskInfo> {
 
     // 前台接口
-    IPage<Map<String, Object>> frontList(PageDTO pageDTO);
+    IPage<Map<String, Object>> frontList(PageDTO pageDTO, String keyword);
     Map<String, Object> frontInfo(Long taskId);
     Map<String, Object> receiveTask(Long userId, Long taskId);
     void submitTask(Long userId, Long receiveId, String submitImages, String submitNote);

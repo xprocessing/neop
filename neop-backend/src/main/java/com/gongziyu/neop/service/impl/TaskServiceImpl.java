@@ -42,9 +42,11 @@ public class TaskServiceImpl extends ServiceImpl<TaskInfoMapper, TaskInfo> imple
     // ===== 前台接口 =====
 
     @Override
-    public IPage<Map<String, Object>> frontList(PageDTO pageDTO) {
+    public IPage<Map<String, Object>> frontList(PageDTO pageDTO, String keyword) {
         LambdaQueryWrapper<TaskInfo> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(TaskInfo::getStatus, 1).orderByDesc(TaskInfo::getSort, TaskInfo::getCreateTime);
+        wrapper.eq(TaskInfo::getStatus, 1)
+               .like(keyword != null && !keyword.isEmpty(), TaskInfo::getTaskTitle, keyword)
+               .orderByDesc(TaskInfo::getSort, TaskInfo::getCreateTime);
         IPage<TaskInfo> taskPage = taskInfoMapper.selectPage(pageDTO.getPage(), wrapper);
         return taskPage.convert(this::buildTaskMap);
     }

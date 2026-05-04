@@ -116,7 +116,7 @@ export default {
 			this.loadMoreStatus = 'loading'
 			try {
 				const res = await request({
-					url: '/shop/order/list',
+					url: '/shop/order/my/list',
 					method: 'GET',
 					data: {
 						status: this.tabs[this.currentTab].status,
@@ -125,7 +125,7 @@ export default {
 					}
 				})
 				if (res.code === 200) {
-					const list = res.data.list || res.data
+					const list = res.data.records || res.data
 					if (this.pageNum === 1) {
 						this.orderList = list
 					} else {

@@ -136,7 +136,7 @@ const sendCode = async () => {
   if (errors.value.phone) return
 
   try {
-    await request.post('/api/auth/send-bind-code', { phone: phone.value })
+    await request.post('/auth/send-bind-code', { phone: phone.value })
     uni.showToast({ title: '验证码已发送', icon: 'success' })
     
     countdown.value = 60
@@ -163,7 +163,7 @@ const handleBind = async () => {
   try {
     uni.showLoading({ title: '绑定中...' })
     
-    await request.post('/api/user/bind-phone', {
+    await request.post('/user/bind-phone', {
       userId: userId.value,
       phone: phone.value,
       code: code.value

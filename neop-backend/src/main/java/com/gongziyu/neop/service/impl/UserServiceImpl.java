@@ -132,6 +132,58 @@ public class UserServiceImpl extends ServiceImpl<UserInfoMapper, UserInfo> imple
         return userInfoMapper.selectPage(pageDTO.getPage(), wrapper);
     }
 
+    @Override
+    public void updateUser(Long userId, Map<String, Object> body) {
+        UserInfo user = new UserInfo();
+        user.setId(userId);
+        if (body.containsKey("nickname")) {
+            user.setNickname((String) body.get("nickname"));
+        }
+        if (body.containsKey("avatar")) {
+            user.setAvatar((String) body.get("avatar"));
+        }
+        if (body.containsKey("sex")) {
+            user.setSex(((Number) body.get("sex")).intValue());
+        }
+        userInfoMapper.updateById(user);
+    }
+
+    @Override
+    public void bindPhone(Long userId, String phone) {
+        UserInfo user = new UserInfo();
+        user.setId(userId);
+        user.setPhone(phone);
+        userInfoMapper.updateById(user);
+    }
+
+    @Override
+    public Map<String, Object> refreshToken(String refreshToken) {
+        Map<String, Object> result = new HashMap<>();
+        result.put("token", "new-mock-token");
+        return result;
+    }
+
+    @Override
+    public Map<String, Object> inviteInfo(Long userId) {
+        Map<String, Object> result = new HashMap<>();
+        result.put("totalInvite", 0);
+        result.put("totalReward", 0);
+        return result;
+    }
+
+    @Override
+    public IPage<Map<String, Object>> inviteList(Long userId, PageDTO pageDTO) {
+        return new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(1, 10, 0);
+    }
+
+    @Override
+    public Map<String, Object> inviteQrcode(Long userId) {
+        Map<String, Object> result = new HashMap<>();
+        result.put("qrcode", "");
+        result.put("inviteUrl", "https://api.gongziyu.com/invite/" + userId);
+        return result;
+    }
+
     /**
      * 处理邀请关系
      */

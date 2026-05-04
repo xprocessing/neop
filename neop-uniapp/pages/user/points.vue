@@ -120,7 +120,7 @@ export default {
 					}
 				})
 				if (res.code === 200) {
-					const list = res.data.list || res.data
+					const list = res.data.records || res.data
 					if (this.pageNum === 1) {
 						this.detailList = list
 					} else {

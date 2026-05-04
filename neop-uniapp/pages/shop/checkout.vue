@@ -154,7 +154,7 @@ const totalAmount = computed(() => {
 // 加载默认地址
 const loadDefaultAddress = async () => {
   try {
-    const res = await request.get('/api/user/address/default')
+    const res = await request.get('/user/address/default')
     selectedAddress.value = res.data
   } catch (error) {
     console.error('加载默认地址失败', error)
@@ -191,7 +191,7 @@ const handleSubmit = async () => {
       totalAmount: totalAmount.value
     }
 
-    const res = await request.post('/api/shop/order/create', orderData)
+    const res = await request.post('/shop/order/create', orderData)
     
     uni.hideLoading()
     

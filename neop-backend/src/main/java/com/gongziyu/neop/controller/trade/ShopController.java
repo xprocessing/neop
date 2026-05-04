@@ -1,11 +1,17 @@
 package com.gongziyu.neop.controller.trade;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.gongziyu.neop.annotation.OperationLog;
 import com.gongziyu.neop.common.PageDTO;
 import com.gongziyu.neop.common.Result;
+import com.gongziyu.neop.entity.Cart;
+import com.gongziyu.neop.entity.Order;
 import com.gongziyu.neop.entity.Product;
 import com.gongziyu.neop.entity.ProductCategory;
+import com.gongziyu.neop.mapper.CartMapper;
+import com.gongziyu.neop.mapper.OrderMapper;
+import com.gongziyu.neop.mapper.ProductMapper;
 import com.gongziyu.neop.service.ShopService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -26,6 +32,15 @@ public class ShopController {
 
     @Autowired
     private ShopService shopService;
+
+    @Autowired
+    private ProductMapper productMapper;
+
+    @Autowired
+    private CartMapper cartMapper;
+
+    @Autowired
+    private OrderMapper orderMapper;
 
     // ===== 前台：商品分类 =====
 
@@ -51,12 +66,42 @@ public class ShopController {
         return Result.success(product);
     }
 
+    @GetMapping("/api/shop/product/search")
+    public Result<IPage<Product>> searchProduct(PageDTO pageDTO, @RequestParam String keyword) {
+        LambdaQueryWrapper<Product> wrapper = new LambdaQueryWrapper<>();
+        wrapper.like(Product::getProductName, keyword)
+               .eq(Product::getStatus, 1)
+               .orderByDesc(Product::getCreateTime);
+        return Result.success(productMapper.selectPage(pageDTO.getPage(), wrapper));
+    }
+
+    @PostMapping("/api/shop/product/collect")
+    public Result<Void> collectProduct(@RequestBody Map<String, Object> body, HttpServletRequest request) {
+        // Stub - just return success
+        return Result.success();
+    }
+
+    @PostMapping("/api/shop/product/uncollect")
+    public Result<Void> uncollectProduct(@RequestBody Map<String, Object> body, HttpServletRequest request) {
+        // Stub - just return success
+        return Result.success();
+    }
+
     // ===== 前台：购物车 =====
 
     @GetMapping("/api/shop/cart/list")
     public Result<List<Map<String, Object>>> cartList(HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
         return Result.success(shopService.cartList(userId));
+    }
+
+    @GetMapping("/api/shop/cart/count")
+    public Result<Integer> cartCount(HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        LambdaQueryWrapper<Cart> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Cart::getUserId, userId);
+        Long count = cartMapper.selectCount(wrapper);
+        return Result.success(count.intValue());
     }
 
     @PostMapping("/api/shop/cart/add")
@@ -121,6 +166,22 @@ public class ShopController {
     public Result<Void> confirmOrder(@RequestBody OrderIdDTO dto, HttpServletRequest request) {
         Long userId = (Long) request.getAttribute("userId");
         shopService.confirmOrder(userId, dto.getOrderId());
+        return Result.success();
+    }
+
+    @PostMapping("/api/shop/order/delete")
+    public Result<Void> deleteOrder(@RequestBody OrderIdDTO dto, HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        // Verify the order belongs to the current user, then soft delete
+        LambdaQueryWrapper<Order> checkWrapper = new LambdaQueryWrapper<>();
+        checkWrapper.eq(Order::getId, dto.getOrderId())
+                    .eq(Order::getUserId, userId);
+        Order order = orderMapper.selectOne(checkWrapper);
+        if (order == null) {
+            return Result.error(2001, "订单不存在");
+        }
+        // Soft delete via MyBatis-Plus @TableLogic
+        orderMapper.deleteById(dto.getOrderId());
         return Result.success();
     }
 

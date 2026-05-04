@@ -118,14 +118,17 @@ com/gongziyu/neop/entity/UserAddress.class
 com/gongziyu/neop/mapper/SysAdminMapper.class
 com/gongziyu/neop/entity/MemberPackage.class
 com/gongziyu/neop/controller/user/UserAddressController.class
+com/gongziyu/neop/controller/AuthController.class
 com/gongziyu/neop/entity/InviteUser.class
 com/gongziyu/neop/config/UploadProperties.class
 com/gongziyu/neop/entity/UserInfo.class
 com/gongziyu/neop/entity/OrderProduct.class
 com/gongziyu/neop/common/Result.class
 com/gongziyu/neop/controller/task/TaskController$TaskDTO.class
+com/gongziyu/neop/controller/UploadController.class
 com/gongziyu/neop/service/impl/UserAddressServiceImpl.class
 com/gongziyu/neop/service/impl/PointServiceImpl.class
+com/gongziyu/neop/controller/MessageController.class
 com/gongziyu/neop/config/WebMvcConfig.class
 com/gongziyu/neop/entity/PointUser.class
 com/gongziyu/neop/exception/BusinessException.class

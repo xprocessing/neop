@@ -81,7 +81,7 @@ const handleTokenRefresh = (originalRequest, resolve, reject) => {
     
     // 调用刷新Token接口
     uni.request({
-      url: `${BASE_URL}/api/user/refresh-token`,
+      url: `${BASE_URL}/user/refresh-token`,
       method: 'POST',
       data: { refreshToken },
       success: (res) => {

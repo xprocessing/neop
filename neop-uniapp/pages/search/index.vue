@@ -164,21 +164,21 @@ const doSearch = async () => {
   
   try {
     // 搜索商品
-    const goodsRes = await request.get('/api/shop/goods/search', {
+    const goodsRes = await request.get('/shop/product/search', {
       keyword: keyword.value,
       page: 1,
       pageSize: 20
     })
-    goodsList.value = goodsRes.data.list
+    goodsList.value = goodsRes.data.records
     goodsTotal.value = goodsRes.data.total
     
     // 搜索任务
-    const taskRes = await request.get('/api/task/search', {
+    const taskRes = await request.get('/task/list', {
       keyword: keyword.value,
       page: 1,
       pageSize: 20
     })
-    taskList.value = taskRes.data.list
+    taskList.value = taskRes.data.records
     taskTotal.value = taskRes.data.total
   } catch (error) {
     console.error('搜索失败', error)
