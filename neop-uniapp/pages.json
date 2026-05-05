@@ -37,7 +37,7 @@
       }
     },
     {
-      "path": "pages/shop/product",
+      "path": "pages/shop/detail",
       "style": {
         "navigationBarTitleText": "商品详情"
       }

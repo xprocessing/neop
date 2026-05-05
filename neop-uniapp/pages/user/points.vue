@@ -151,7 +151,7 @@ export default {
 		},
 		goSign() {
 			uni.navigateTo({
-				url: '/pages/user/sign'
+				url: '/pages/user/signin'
 			})
 		},
 		goTask() {
