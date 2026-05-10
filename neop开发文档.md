@@ -1868,53 +1868,1097 @@ INSERT INTO sys_role_menu (role_id, menu_id) SELECT 1, id FROM sys_menu;
 
 ## 九、微信支付核心技术规范
 
-### 9.1 微信企业付款实现规范
+### 9.1 微信支付功能概览
 
-- 证书：resources/cert/apiclient_cert.p12
-- 回调地址：https://neop.gongziyu.com/api/wechat/pay/callback
-- 状态：处理中→成功/失败
-- 失败自动重试+后台手动补发
+NEOP系统使用微信支付实现以下三个核心场景：
 
-### 9.2 微信企业付款最终技术标准
+| 支付场景 | 支付方式 | 接口类型 | 涉及的模块 | 金额方向 |
+|----------|----------|----------|------------|----------|
+| **会员充值** | JSAPI/小程序支付 | V2统一下单 | 营销增值模块 | 用户 → 商户 |
+| **电商下单** | JSAPI/小程序支付/H5支付 | V2统一下单 | 电商交易模块 | 用户 → 商户 |
+| **任务奖励打款** | 企业付款到零钱 | V2企业付款 | 任务打款模块 | 商户 → 用户 |
 
-- 调用版本：**微信支付V2接口**（兼容p12证书）
-- 接口地址：**https://api.mch.weixin.qq.com/mmpaymkttransfers/promotion/transfers**
-- 签名算法：HMAC-SHA256
-- 证书文件：apiclient_cert.p12
-- 失败重试机制：自动重试3次，间隔30s、60s、120s
-- 回调报文格式：标准V2 XML格式
-- 回调成功返回：`<xml><return_code><![CDATA[SUCCESS]]></return_code></xml>`
+**技术选型说明**：
+- 使用 `weixin-java-pay` SDK（v4.6.0）封装微信支付V2接口
+- 会员充值和电商支付使用 **JSAPI统一下单** 获取 prepay_id，前端调起支付
+- 任务奖励使用 **V2企业付款到零钱** 接口，使用 p12 证书
+- 统一下单回调通知使用 **V2 XML 格式** 回调
 
-### 9.3 微信支付签名验证详细步骤
+### 9.2 weixin-java-pay SDK 配置（WxPayConfiguration）
 
-**签名生成（请求发送时）**：
+#### 9.2.1 Maven 依赖
 
-1. 将所有非空参数按字典序（ASCII码）排序
-2. 使用URL键值对格式拼接：`key1=value1&key2=value2&key=API密钥`
-3. 对拼接字符串做 HMAC-SHA256 运算，结果转大写
-4. 将 sign 字段加入请求参数
-
-**签名验证（回调接收时）**：
-
-1. 接收原始XML报文，解析为Map
-2. 取出 sign 字段值，从Map中移除 sign 和 sign_type
-3. 将剩余非空参数按字典序排序
-4. 使用URL键值对格式拼接：`key1=value1&key2=value2&key=API密钥`
-5. 对拼接字符串做 HMAC-SHA256 运算，结果转大写
-6. 比对计算值与接收的sign是否一致，不一致则验签失败
-
-**注意事项**：
-- key 为微信商户平台设置的 API 密钥
-- 空值参数不参与签名
-- 参数名区分大小写
-
-### 9.4 微信支付回调处理流程（统一模板）
-
-```
-接收原始报文 → 解析XML → 验签 → Redis幂等校验 → 业务处理 → 设置幂等标记 → 返回SUCCESS
+```xml
+<!-- 微信支付（V2接口，兼容p12证书） -->
+<dependency>
+    <groupId>com.github.binarywang</groupId>
+    <artifactId>weixin-java-pay</artifactId>
+    <version>${weixin-java.version}</version>
+</dependency>
 ```
 
-**问题说明**：回调地址 https://neop.gongziyu.com/api/wechat/pay/callback 出现网页解析失败，原因为：微信回调为**XML纯文本报文POST请求**，非网页HTML页面，浏览器直接打开会解析失败，属于正常现象，不影响接口服务。
+注意：`weixin-java-pay` 已内置 XML 解析、签名生成/验证、证书加载等功能，无需手动实现签名逻辑。
+
+#### 9.2.2 WxPayConfiguration 配置类
+
+**包路径**：`com.gongziyu.neop.config.WxPayConfiguration`
+
+**功能**：初始化微信支付 SDK 的 `WxPayService` 单例 Bean，供 `WechatPayServiceImpl` 和 `MemberPackageServiceImpl` 注入使用。
+
+```java
+package com.gongziyu.neop.config;
+
+import com.github.binarywang.wxpay.config.WxPayConfig;
+import com.github.binarywang.wxpay.service.WxPayService;
+import com.github.binarywang.wxpay.service.impl.WxPayServiceImpl;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.ResourceLoader;
+
+import java.io.File;
+import java.io.InputStream;
+
+/**
+ * 微信支付SDK配置类
+ * 
+ * 初始化方式：
+ * 1. 统一下单：使用 WxPayService.createOrder() 方法
+ * 2. 企业付款：使用 WxPayService.getEntPayService().entPay() 方法
+ * 
+ * 注意：企业付款使用V2接口，需要加载p12证书文件
+ */
+@Slf4j
+@Configuration
+public class WxPayConfiguration {
+
+    @Value("${neop.wechat.mp-appid:}")
+    private String appId;
+
+    @Value("${neop.wechat.mch-id:}")
+    private String mchId;
+
+    @Value("${neop.wechat.api-key:}")
+    private String apiKey;
+
+    @Value("${neop.wechat.cert-path:}")
+    private String certPath;
+
+    @Value("${neop.wechat.notify-domain:}")
+    private String notifyDomain;
+
+    @Bean
+    @ConditionalOnProperty(name = "neop.wechat.mch-id", havingValue = "", matchIfMissing = false)
+    public WxPayService wxPayService() {
+        WxPayConfig payConfig = new WxPayConfig();
+        payConfig.setAppId(appId);
+        payConfig.setMchId(mchId);
+        payConfig.setMchKey(apiKey);
+        payConfig.setSignType("HMAC-SHA256");
+        
+        // 统一下单回调地址
+        // 会员充值回调：{notifyDomain}/api/wechat/member/callback
+        // 电商支付回调：{notifyDomain}/api/wechat/shop/callback
+        payConfig.setNotifyUrl(notifyDomain + "/api/wechat/member/callback");
+        
+        // 加载p12证书（企业付款必选）
+        if (certPath != null && !certPath.isEmpty()) {
+            try {
+                // 支持 classpath: 和 file: 两种路径
+                if (certPath.startsWith("classpath:")) {
+                    // 从classpath加载
+                    payConfig.setKeyContent(
+                        getClass().getResourceAsStream(certPath.replace("classpath:", "")).readAllBytes()
+                    );
+                } else {
+                    payConfig.setKeyContent(new java.io.FileInputStream(certPath).readAllBytes());
+                }
+                payConfig.setUseSandboxEnv(false);
+                log.info("[微信支付] p12证书加载成功, path={}", certPath);
+            } catch (Exception e) {
+                log.error("[微信支付] p12证书加载失败: {}", e.getMessage());
+            }
+        }
+
+        WxPayService wxPayService = new WxPayServiceImpl();
+        wxPayService.setConfig(payConfig);
+        return wxPayService;
+    }
+}
+```
+
+**配置说明**：
+- 统一下单使用 SDK 内置的 HTTP 客户端（无需证书）
+- 企业付款到零钱需要加载 p12 证书（通过 `setKeyContent` 或 `setKeyPath`）
+- 生产环境建议将证书文件放在独立路径，如 `/data/neop/cert/apiclient_cert.p12`
+- SDK 自动处理签名生成和验签，无需手动实现
+
+#### 9.2.3 application-dev.yml 配置补充
+
+```yaml
+neop:
+  wechat:
+    mp-appid: wx1234567890abcdef      # 微信公众号/小程序AppID
+    mp-secret: your_mp_secret          # 公众号/小程序密钥
+    mch-id: 1600000001                 # 微信商户号ID
+    api-key: your_api_key_32_chars     # 微信支付API密钥（32位）
+    cert-path: classpath:cert/apiclient_cert.p12  # 证书路径
+    notify-domain: https://neop.gongziyu.com      # 支付回调域名（用于生成回调地址）
+```
+
+### 9.3 JSAPI 统一下单（会员充值 & 电商支付）
+
+#### 9.3.1 统一下单接口规范
+
+**接口地址**：`https://api.mch.weixin.qq.com/pay/unifiedorder`
+
+**请求方式**：POST（XML格式）
+
+**请求参数**（由 weixin-java-pay SDK 封装）：
+
+| 参数名 | 必填 | 类型 | 说明 |
+|--------|------|------|------|
+| appid | 是 | String | 公众号/小程序AppID |
+| mch_id | 是 | String | 商户号 |
+| nonce_str | 是 | String | 随机字符串（SDK自动生成） |
+| sign | 是 | String | HMAC-SHA256签名（SDK自动生成） |
+| body | 是 | String | 商品描述：如"会员充值-黄金会员"、"商品购买-商品名称" |
+| out_trade_no | 是 | String | 商户订单号（MB/NO前缀） |
+| total_fee | 是 | Integer | 订单总金额，单位：**分**，即元*100 |
+| spbill_create_ip | 是 | String | 终端IP：用户公网IP |
+| notify_url | 是 | String | 回调通知地址 |
+| trade_type | 是 | String | JSAPI（公众号/小程序）/ MWEB（H5）/ APP |
+| openid | 是(trade_type=JSAPI) | String | 用户openid（JSAPI支付必传） |
+
+**响应参数**（关键字段）：
+
+| 参数名 | 说明 |
+|--------|------|
+| return_code | SUCCESS/FAIL，通信标识 |
+| result_code | SUCCESS/FAIL，业务结果 |
+| prepay_id | 预支付ID，用于前端调起支付（有效期2小时） |
+| mweb_url | H5支付跳转链接（trade_type=MWEB时返回） |
+
+**核心代码实现**（在 `WechatPayServiceImpl` 或 `MemberPackageServiceImpl` 中）：
+
+```java
+// 使用 weixin-java-pay SDK 统一下单
+@Autowired
+private WxPayService wxPayService;
+
+public Map<String, String> unifiedOrder(String openid, String orderNo, 
+                                         String body, Integer totalFee, 
+                                         String tradeType) {
+    UnifiedOrderRequest request = new UnifiedOrderRequest();
+    request.setBody(body);
+    request.setOutTradeNo(orderNo);
+    request.setTotalFee(totalFee);  // 单位：分
+    request.setSpbillCreateIp(getClientIp());
+    request.setTradeType(tradeType);
+    request.setNotifyUrl(notifyDomain + "/api/wechat/" + callbackPath);
+    
+    if ("JSAPI".equals(tradeType)) {
+        request.setOpenid(openid);
+    }
+    
+    try {
+        UnifiedOrderResult result = wxPayService.unifiedOrder(request);
+        if (!"SUCCESS".equals(result.getReturnCode()) 
+            || !"SUCCESS".equals(result.getResultCode())) {
+            log.error("[统一下单失败] orderNo={}, errCode={}, errMsg={}", 
+                orderNo, result.getErrCode(), result.getErrCodeDes());
+            throw new BusinessException("微信支付下单失败");
+        }
+        
+        // 返回前端调起支付所需参数
+        Map<String, String> payParams = new HashMap<>();
+        if ("JSAPI".equals(tradeType)) {
+            payParams.put("appId", wxPayService.getConfig().getAppId());
+            payParams.put("timeStamp", String.valueOf(System.currentTimeMillis() / 1000));
+            payParams.put("nonceStr", StringUtil.generateRandomString(32));
+            payParams.put("package", "prepay_id=" + result.getPackageValue());
+            payParams.put("signType", "HMAC-SHA256");
+            // paySign 由前端使用 SDK 或根据规则生成
+        } else if ("MWEB".equals(tradeType)) {
+            payParams.put("mwebUrl", result.getMwebUrl());
+        }
+        return payParams;
+    } catch (WxPayException e) {
+        log.error("[统一下单异常] orderNo={}", orderNo, e);
+        throw new BusinessException("微信支付服务异常");
+    }
+}
+```
+
+**金额转换规范**：
+```java
+// 元 → 分（用于统一下单请求）
+int totalFee = amount.multiply(new BigDecimal("100")).intValue();
+
+// 分 → 元（用于回调解析）
+BigDecimal amount = new BigDecimal(totalFee).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
+```
+
+#### 9.3.2 会员充值支付流程
+
+**完整链路**：
+
+```
+用户选择套餐 → 下单(createOrder) → 生成pay_order(pay_type=1, order_type=1)
+    → 支付(payOrder) → 调微信统一下单 → 获取prepay_id → 返回JSAPI参数
+    → 前端调起支付 → 用户确认支付 → 微信异步回调 → 更新订单+会员信息+积分
+```
+
+**接口实现位置**：
+- `MemberPackageService.createOrder()` - 生成充值订单（已有实现）
+- `MemberPackageService.payOrder()` - 调用统一下单获取prepay_id（需完善）
+- `WechatCallbackController.memberCallback()` - 处理支付回调
+
+**payOrder 方法完整实现**：
+
+```java
+@Override
+public Map<String, Object> payOrder(Long userId, Long orderId) {
+    // 1. 校验订单
+    PayOrder order = payOrderMapper.selectById(orderId);
+    if (order == null || !order.getUserId().equals(userId)) {
+        throw BusinessException.of(5001, "订单不存在");
+    }
+    if (order.getStatus() != 0) {
+        throw BusinessException.of(5002, "订单已支付，无需重复支付");
+    }
+
+    // 2. 获取用户openid
+    String openid = getUserOpenid(userId);
+    if (StringUtils.isBlank(openid)) {
+        throw BusinessException.of("未绑定微信账号");
+    }
+
+    // 3. 查询套餐（获取描述）
+    MemberPackage pkg = memberPackageMapper.selectById(order.getPackageId());
+    String body = "会员充值-" + (pkg != null ? pkg.getPackageName() : "套餐");
+
+    // 4. 调用统一下单
+    try {
+        UnifiedOrderRequest request = new UnifiedOrderRequest();
+        request.setBody(body);
+        request.setOutTradeNo(order.getOrderNo());
+        request.setTotalFee(order.getAmount().multiply(new BigDecimal("100")).intValue());
+        request.setSpbillCreateIp("127.0.0.1");  // 实际使用用户IP
+        request.setTradeType("JSAPI");
+        request.setOpenid(openid);
+        request.setNotifyUrl(wxPayService.getConfig().getNotifyUrl());
+
+        UnifiedOrderResult result = wxPayService.unifiedOrder(request);
+        if (!"SUCCESS".equals(result.getResultCode())) {
+            log.error("[会员支付-统一下单失败] orderNo={}, err={}", orderNo, result.getErrCodeDes());
+            throw BusinessException.of("微信支付下单失败");
+        }
+
+        // 5. 构造JSAPI调起参数
+        String nonceStr = StringUtil.generateRandomString(32);
+        String timeStamp = String.valueOf(System.currentTimeMillis() / 1000);
+        String packageValue = "prepay_id=" + result.getPackageValue();
+        
+        // 计算paySign
+        String paySign = wxPayService.createOrderJsConfig(nonceStr, packageValue, timeStamp);
+
+        Map<String, Object> payParams = new HashMap<>();
+        payParams.put("appId", wxPayService.getConfig().getAppId());
+        payParams.put("timeStamp", timeStamp);
+        payParams.put("nonceStr", nonceStr);
+        payParams.put("package", packageValue);
+        payParams.put("signType", "HMAC-SHA256");
+        payParams.put("paySign", paySign);
+        payParams.put("orderNo", order.getOrderNo());
+        
+        return payParams;
+    } catch (WxPayException e) {
+        log.error("[会员支付-统一下单异常] orderNo={}", orderNo, e);
+        throw BusinessException.of("微信支付服务异常");
+    }
+}
+```
+
+#### 9.3.3 电商订单支付流程
+
+**完整链路**：
+
+```
+用户下单 → 创建订单(order) → 支付(payOrder) → 调微信统一下单
+    → 获取prepay_id → 返回JSAPI参数 → 前端调起支付
+    → 微信异步回调 → 更新订单状态+扣减真实库存+增加销量
+```
+
+**接口位置**：`ShopService.payOrder()`
+
+**实现方式**：与会员充值支付类似，区别在于：
+- `out_trade_no` 使用电商订单号（NO前缀）
+- `body` 为商品名称
+- `notify_url` 为 `/api/wechat/shop/callback`
+- 回调处理逻辑不同（更新订单状态、扣减库存）
+
+### 9.4 H5 支付（非微信浏览器场景）
+
+当用户在非微信内置浏览器中打开H5页面进行支付时，使用 H5 支付（trade_type=MWEB）。
+
+**使用场景**：
+- UniApp H5 在非微信浏览器中购买会员/商品
+- 外部浏览器访问移动端H5
+
+**与JSAPI的区别**：
+
+| 差异项 | JSAPI | H5（MWEB） |
+|--------|-------|------------|
+| 是否需要openid | 是 | 否 |
+| 前端调起方式 | 调用 WeixinJSBridge | 跳转 mweb_url |
+| 返回参数 | prepay_id | mweb_url |
+| 适用环境 | 微信内浏览器/小程序 | 外部浏览器 |
+
+**前端处理H5支付**：
+
+```javascript
+// H5支付 - 直接跳转到mweb_url
+uni.request({
+    url: '/api/member/order/pay',
+    method: 'POST',
+    data: { orderId: orderId },
+    success: (res) => {
+        if (res.data.code === 200) {
+            // 获取mweb_url并跳转
+            const mwebUrl = res.data.data.mwebUrl;
+            window.location.href = mwebUrl;
+        }
+    }
+});
+```
+
+### 9.5 小程序支付
+
+**使用场景**：微信小程序内购买会员/商品
+
+**与JSAPI的关系**：小程序支付本质也是JSAPI支付，但前端调起方式不同。
+
+**接口实现**：
+- 统一下单 `trade_type=JSAPI`，`openid` 使用小程序的 openid
+- 小程序 `appid` 与公众号 `appid` 不同，需要区分配置
+
+**配置说明**：
+
+```yaml
+neop:
+  wechat:
+    mp-appid: wx公众号appid          # 公众号AppID（H5登录用）
+    mini-appid: wx小程序appid         # 小程序AppID（小程序支付用）
+    mch-id: 1600000001               # 商户号（公众号和小程序可以共用一个）
+```
+
+**WxPayConfig 需要创建两个不同 appid 的实例**：
+
+```java
+// 公众号支付配置
+@Bean
+@ConditionalOnProperty(name = "neop.wechat.mp-appid")
+public WxPayService wxPayServiceForMp() {
+    WxPayConfig config = new WxPayConfig();
+    config.setAppId(mpAppId);  // 公众号appid
+    config.setMchId(mchId);
+    config.setMchKey(apiKey);
+    config.setSignType("HMAC-SHA256");
+    // ...
+    return new WxPayServiceImpl(config);
+}
+
+// 小程序支付配置
+@Bean
+@ConditionalOnProperty(name = "neop.wechat.mini-appid")
+public WxPayService wxPayServiceForMini() {
+    WxPayConfig config = new WxPayConfig();
+    config.setAppId(miniAppId);  // 小程序appid
+    config.setMchId(mchId);
+    config.setMchKey(apiKey);
+    config.setSignType("HMAC-SHA256");
+    // ...
+    return new WxPayServiceImpl(config);
+}
+```
+
+**小程序前端调起支付**：
+
+```javascript
+// 微信小程序内调起支付
+wx.requestPayment({
+    timeStamp: res.data.timeStamp,
+    nonceStr: res.data.nonceStr,
+    package: res.data.package,
+    signType: 'HMAC-SHA256',
+    paySign: res.data.paySign,
+    success: function (res) {
+        // 支付成功，跳转到成功页面
+    },
+    fail: function (err) {
+        // 支付失败，提示用户
+    }
+});
+```
+
+**UniApp 内调起小程序支付**：
+
+```javascript
+// UniApp 跨端兼容写法
+uni.requestPayment({
+    provider: 'wxpay',
+    timeStamp: res.data.timeStamp,
+    nonceStr: res.data.nonceStr,
+    package: res.data.package,
+    signType: 'HMAC-SHA256',
+    paySign: res.data.paySign,
+    success: (res) => {
+        uni.showToast({ title: '支付成功' });
+        uni.navigateTo({ url: '/pages/shop/payment-result?status=success' });
+    },
+    fail: (err) => {
+        uni.showToast({ title: '支付取消', icon: 'none' });
+    }
+});
+```
+
+**H5（微信内浏览器）调起支付**：
+
+```javascript
+// 公众号H5内调起微信支付（需引入JS-SDK）
+function onBridgeReady(payParams) {
+    WeixinJSBridge.invoke(
+        'getBrandWCPayRequest',
+        {
+            appId: payParams.appId,
+            timeStamp: payParams.timeStamp,
+            nonceStr: payParams.nonceStr,
+            package: payParams.package,
+            signType: 'HMAC-SHA256',
+            paySign: payParams.paySign
+        },
+        function (res) {
+            if (res.err_msg === 'get_brand_wcpay_request:ok') {
+                // 支付成功
+            } else {
+                // 支付取消或失败
+            }
+        }
+    );
+}
+```
+
+### 9.6 微信企业付款到零钱（完整实现）
+
+#### 9.6.1 功能概述
+
+企业付款到零钱用于将任务奖励金额从商户号打款到用户的微信零钱账户。
+
+**核心接口**：`https://api.mch.weixin.qq.com/mmpaymkttransfers/promotion/transfers`
+
+**调用条件**：
+- 商户号已开通企业付款功能
+- 已加载 p12 证书
+- 用户已关注当前公众号（或已在小程序中授权）
+- 用户微信已实名认证
+- 单笔最低 1 元，最高 20000 元
+
+#### 9.6.2 企业付款请求参数
+
+| 参数名 | 必填 | 类型 | 说明 |
+|--------|------|------|------|
+| mch_appid | 是 | String | 商户账号appid |
+| mchid | 是 | String | 商户号 |
+| nonce_str | 是 | String | 随机字符串（SDK自动生成） |
+| sign | 是 | String | HMAC-SHA256签名（SDK自动生成） |
+| partner_trade_no | 是 | String | 商户订单号（TP前缀，唯一） |
+| openid | 是 | String | 用户openid |
+| check_name | 是 | String | NO_CHECK（不校验真实姓名） |
+| amount | 是 | Integer | 付款金额，单位：**分** |
+| desc | 是 | String | 企业付款描述，如"任务奖励-邀请好友" |
+| spbill_create_ip | 是 | String | 调用接口的IP地址 |
+
+#### 9.6.3 企业付款完整代码实现
+
+**包路径**：`com.gongziyu.neop.service.impl.WechatPayServiceImpl`
+
+```java
+package com.gongziyu.neop.service.impl;
+
+import com.github.binarywang.wxpay.bean.entpay.EntPayRequest;
+import com.github.binarywang.wxpay.bean.entpay.EntPayResult;
+import com.github.binarywang.wxpay.exception.WxPayException;
+import com.github.binarywang.wxpay.service.WxPayService;
+import com.gongziyu.neop.entity.TaskPayLog;
+import com.gongziyu.neop.entity.TaskUserReceive;
+import com.gongziyu.neop.entity.UserWechat;
+import com.gongziyu.neop.exception.WechatApiException;
+import com.gongziyu.neop.mapper.TaskPayLogMapper;
+import com.gongziyu.neop.mapper.TaskUserReceiveMapper;
+import com.gongziyu.neop.mapper.UserWechatMapper;
+import com.gongziyu.neop.service.WechatPayService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Date;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class WechatPayServiceImpl implements WechatPayService {
+
+    private final WxPayService wxPayService;
+    private final TaskPayLogMapper taskPayLogMapper;
+    private final TaskUserReceiveMapper taskUserReceiveMapper;
+    private final UserWechatMapper userWechatMapper;
+
+    @Override
+    public String transfer(String tradeNo, String openid, String amount, String desc) {
+        try {
+            // 构建企业付款请求
+            EntPayRequest request = EntPayRequest.newBuilder()
+                .partnerTradeNo(tradeNo)         // 本地交易单号（TP前缀）
+                .openid(openid)                   // 用户openid
+                .checkName("NO_CHECK")            // 不校验真实姓名
+                .amount(new BigDecimal(amount)     // 金额，单位：元
+                    .multiply(new BigDecimal("100"))
+                    .intValue())                   // 转换为分
+                .description(desc)                 // 付款描述
+                .spbillCreateIp("127.0.0.1")       // 调用IP
+                .build();
+
+            // 调用微信企业付款接口
+            EntPayResult result = wxPayService.getEntPayService().entPay(request);
+            
+            log.info("[企业付款成功] tradeNo={}, wechatPayNo={}, amount={}", 
+                tradeNo, result.getPaymentNo(), amount);
+            
+            return result.getPaymentNo();  // 微信支付单号
+            
+        } catch (WxPayException e) {
+            log.error("[企业付款失败] tradeNo={}, errCode={}, errMsg={}", 
+                tradeNo, e.getErrCode(), e.getErrCodeDes());
+            throw new WechatApiException(5001, "微信打款失败：" + e.getErrCodeDes());
+        } catch (Exception e) {
+            log.error("[企业付款异常] tradeNo={}", tradeNo, e);
+            throw new WechatApiException(5001, "微信打款失败：" + e.getMessage());
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void processPay(TaskPayLog payLog) {
+        try {
+            // 1. 获取用户openid
+            UserWechat userWechat = userWechatMapper.selectOne(
+                new LambdaQueryWrapper<UserWechat>()
+                    .eq(UserWechat::getUserId, payLog.getUserId())
+            );
+            if (userWechat == null || StringUtils.isBlank(userWechat.getOpenid())) {
+                throw new WechatApiException("用户未绑定微信，无法打款");
+            }
+
+            // 2. 调用微信企业付款
+            String wechatPayNo = transfer(
+                payLog.getTradeNo(),
+                userWechat.getOpenid(),
+                payLog.getPayAmount().toPlainString(),
+                "任务奖励-" + payLog.getTaskTitle()
+            );
+
+            // 3. 更新打款日志为成功
+            payLog.setPayStatus(2);  // 2=成功
+            payLog.setWechatPayNo(wechatPayNo);
+            payLog.setPayTime(new Date());
+            taskPayLogMapper.updateById(payLog);
+
+            // 4. 更新任务领取记录提现状态
+            TaskUserReceive receive = taskUserReceiveMapper.selectById(payLog.getReceiveId());
+            if (receive != null) {
+                receive.setWithdrawStatus(2);  // 2=已成功
+                taskUserReceiveMapper.updateById(receive);
+            }
+
+            log.info("[打款成功] receiveId={}, tradeNo={}, wechatPayNo={}, amount={}", 
+                payLog.getReceiveId(), payLog.getTradeNo(), wechatPayNo, payLog.getPayAmount());
+
+        } catch (WechatApiException e) {
+            // 打款失败 - 更新状态为失败，记录失败原因
+            payLog.setPayStatus(3);  // 3=失败
+            payLog.setFailReason(e.getMessage());
+            payLog.setRetryCount(payLog.getRetryCount() + 1);
+            taskPayLogMapper.updateById(payLog);
+
+            log.error("[打款失败] receiveId={}, tradeNo={}, reason={}", 
+                payLog.getReceiveId(), payLog.getTradeNo(), e.getMessage());
+        }
+    }
+}
+```
+
+#### 9.6.4 授权打款接口（后台）
+
+**接口地址**：`POST /api/admin/task/grant/pay`
+
+**权限标识**：`task:paylog:grant`
+
+**完整业务逻辑**（位于 `TaskServiceImpl` 或 `TaskController`）：
+
+```java
+@PostMapping("/grant/pay")
+public Result<Void> grantPay(@RequestBody @Valid GrantPayDTO dto) {
+    Long adminId = JwtUtil.getCurrentAdminId();
+    
+    // 1. 校验任务领取记录
+    TaskUserReceive receive = taskUserReceiveMapper.selectById(dto.getReceiveId());
+    if (receive == null) {
+        throw BusinessException.of(1001, "任务记录不存在");
+    }
+    // 提现三校验
+    if (receive.getAuditStatus() != 3) {  // 必须已通过
+        throw BusinessException.of(1006, "任务未审核通过，无法申请提现");
+    }
+    if (receive.getWithdrawStatus() != 0) {  // 必须未提现
+        throw BusinessException.of(1007, "该任务已完成打款，请勿重复操作");
+    }
+    if (receive.getRewardAmount().compareTo(BigDecimal.ZERO) <= 0) {
+        throw BusinessException.of("任务奖励金额异常");
+    }
+
+    // 2. 更新授权状态
+    receive.setGrantPay(1);  // 已授权
+    taskUserReceiveMapper.updateById(receive);
+
+    // 3. 生成打款日志
+    TaskPayLog payLog = new TaskPayLog();
+    payLog.setReceiveId(receive.getId());
+    payLog.setUserId(receive.getUserId());
+    payLog.setTaskTitle(getTaskTitle(receive.getTaskId()));
+    payLog.setTradeNo(OrderNoUtil.generateTaskPayNo());  // TP前缀
+    payLog.setPayAmount(receive.getRewardAmount());
+    payLog.setPayStatus(1);  // 1=处理中
+    payLog.setApplyTime(new Date());
+    taskPayLogMapper.insert(payLog);
+
+    // 4. 更新提现状态
+    receive.setWithdrawStatus(1);  // 1=处理中
+    taskUserReceiveMapper.updateById(receive);
+
+    // 5. 异步执行打款
+    CompletableFuture.runAsync(() -> {
+        wechatPayService.processPay(payLog);
+    });
+
+    log.info("[授权打款] adminId={}, receiveId={}, tradeNo={}, amount={}", 
+        adminId, receive.getId(), payLog.getTradeNo(), payLog.getPayAmount());
+
+    return Result.success();
+}
+```
+
+#### 9.6.5 失败重试机制
+
+**自动重试**（定时任务，每10分钟执行一次）：
+
+```java
+// 位于 ScheduledTasks.java
+@Scheduled(cron = "0 */10 * * * ?")
+public void retryFailedPay() {
+    LambdaQueryWrapper<TaskPayLog> wrapper = new LambdaQueryWrapper<>();
+    wrapper.eq(TaskPayLog::getPayStatus, 3)     // 失败
+           .lt(TaskPayLog::getRetryCount, 3);    // 重试次数 < 3
+    
+    List<TaskPayLog> failedList = taskPayLogMapper.selectList(wrapper);
+    for (TaskPayLog payLog : failedList) {
+        try {
+            log.info("[打款重试] 第{}次重试, tradeNo={}", 
+                payLog.getRetryCount() + 1, payLog.getTradeNo());
+            wechatPayService.processPay(payLog);
+        } catch (Exception e) {
+            log.error("[打款重试失败] tradeNo={}", payLog.getTradeNo(), e);
+        }
+    }
+}
+```
+
+**手动补发**：后台管理页面提供手动补发按钮，调用授权打款接口重新触发。
+
+**重试间隔策略**：
+- 第1次失败：等待10分钟后重试
+- 第2次失败：再等待10分钟后重试
+- 第3次失败：不再自动重试，需管理员手动处理
+
+### 9.7 支付回调处理（完整实现）
+
+#### 9.7.1 回调处理统一规范
+
+微信支付回调是**异步通知**机制，订单支付成功后微信服务器会向 `notify_url` 发送POST请求。
+
+**回调处理统一流程**：
+
+```
+接收微信POST请求（XML格式）
+    → 使用SDK解析XML并验签
+    → Redis幂等校验（防止重复通知）
+    → 查询订单
+    → 更新订单状态 + 执行业务逻辑
+    → 设置Redis幂等标记
+    → 返回SUCCESS XML
+```
+
+**关键注意事项**：
+1. 回调处理必须**幂等**：同一个订单可能收到多次回调（网络重试）
+2. 回调处理必须**快**：在事务内完成核心业务逻辑
+3. 返回XML格式：成功返回 `SUCCESS`，失败返回 `FAIL`（微信会重试）
+4. 回调日志必须**完整**：记录原始报文、验签结果、处理结果
+
+#### 9.7.2 WechatCallbackController 完整实现
+
+**包路径**：`com.gongziyu.neop.controller.wechat.WechatCallbackController`
+
+```java
+package com.gongziyu.neop.controller.wechat;
+
+import com.github.binarywang.wxpay.bean.notify.WxPayNotifyResponse;
+import com.github.binarywang.wxpay.bean.notify.WxPayOrderNotifyResult;
+import com.github.binarywang.wxpay.exception.WxPayException;
+import com.github.binarywang.wxpay.service.WxPayService;
+import com.gongziyu.neop.service.MemberPackageService;
+import com.gongziyu.neop.service.ShopService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+/**
+ * 微信支付回调接口
+ * 
+ * 注意：微信回调为XML纯文本POST请求，非网页HTML页面
+ * 浏览器直接打开会解析失败，属于正常现象
+ */
+@Slf4j
+@RestController
+@RequestMapping("/api/wechat")
+@RequiredArgsConstructor
+public class WechatCallbackController {
+
+    private final WxPayService wxPayService;
+    private final MemberPackageService memberPackageService;
+    private final ShopService shopService;
+
+    /**
+     * 会员充值支付回调
+     * 接口地址：POST /api/wechat/member/callback
+     * 
+     * 处理逻辑：
+     * 1. SDK解析XML并自动验签
+     * 2. Redis幂等校验
+     * 3. 更新pay_order状态
+     * 4. 延长会员到期时间
+     * 5. 发放套餐赠送积分
+     * 6. 设置幂等标记
+     */
+    @PostMapping("/member/callback")
+    public String memberCallback(@RequestBody String xmlData) {
+        log.info("[会员支付回调] 收到回调报文: {}", xmlData);
+        
+        try {
+            // 1. 使用SDK解析XML并自动验签
+            WxPayOrderNotifyResult notifyResult = wxPayService.parseOrderNotifyResult(xmlData);
+            
+            String orderNo = notifyResult.getOutTradeNo();     // 商户订单号
+            String wechatPayNo = notifyResult.getTransactionId();  // 微信支付单号
+            String totalFee = notifyResult.getTotalFee();      // 支付金额（分）
+            
+            log.info("[会员支付回调] orderNo={}, wechatPayNo={}, totalFee={}", 
+                orderNo, wechatPayNo, totalFee);
+
+            // 2. 业务处理（包含幂等校验）
+            memberPackageService.handlePayCallback(orderNo, wechatPayNo);
+
+            // 3. 返回成功
+            return WxPayNotifyResponse.success("OK");
+            
+        } catch (WxPayException e) {
+            log.error("[会员支付回调-验签失败] {}", e.getMessage(), e);
+            return WxPayNotifyResponse.fail("签名验证失败");
+        } catch (Exception e) {
+            log.error("[会员支付回调-处理失败]", e);
+            return WxPayNotifyResponse.fail("处理失败");
+        }
+    }
+
+    /**
+     * 电商订单支付回调
+     * 接口地址：POST /api/wechat/shop/callback
+     * 
+     * 处理逻辑：
+     * 1. SDK解析XML并自动验签
+     * 2. Redis幂等校验
+     * 3. 更新订单状态为待发货(1)
+     * 4. 扣减真实库存、增加销量
+     * 5. 设置幂等标记
+     */
+    @PostMapping("/shop/callback")
+    public String shopCallback(@RequestBody String xmlData) {
+        log.info("[电商支付回调] 收到回调报文: {}", xmlData);
+        
+        try {
+            // 1. 使用SDK解析XML并自动验签
+            WxPayOrderNotifyResult notifyResult = wxPayService.parseOrderNotifyResult(xmlData);
+            
+            String orderNo = notifyResult.getOutTradeNo();
+            String wechatPayNo = notifyResult.getTransactionId();
+            
+            log.info("[电商支付回调] orderNo={}, wechatPayNo={}", orderNo, wechatPayNo);
+
+            // 2. 业务处理（包含幂等校验）
+            shopService.handlePayCallback(orderNo, wechatPayNo);
+
+            // 3. 返回成功
+            return WxPayNotifyResponse.success("OK");
+            
+        } catch (WxPayException e) {
+            log.error("[电商支付回调-验签失败] {}", e.getMessage(), e);
+            return WxPayNotifyResponse.fail("签名验证失败");
+        } catch (Exception e) {
+            log.error("[电商支付回调-处理失败]", e);
+            return WxPayNotifyResponse.fail("处理失败");
+        }
+    }
+}
+```
+
+#### 9.7.3 Redis 幂等校验实现
+
+**核心代码**（在 `MemberPackageServiceImpl.handlePayCallback` 和 `ShopService.handlePayCallback` 中）：
+
+```java
+protected boolean checkIdempotent(String orderNo) {
+    String key = "neop:wechat:callback:idempotent:" + orderNo;
+    if (Boolean.TRUE.equals(stringRedisTemplate.hasKey(key))) {
+        log.info("[支付回调-幂等] 重复回调已忽略 orderNo={}", orderNo);
+        return true;  // 已处理过，跳过
+    }
+    return false;
+}
+
+protected void setIdempotent(String orderNo) {
+    String key = "neop:wechat:callback:idempotent:" + orderNo;
+    // 事务提交后才设置幂等标记，确保业务与幂等标记一致
+    TransactionSynchronizationManager.registerSynchronization(
+        new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                stringRedisTemplate.opsForValue().set(key, "1", 24, TimeUnit.HOURS);
+            }
+        }
+    );
+}
+```
+
+#### 9.7.4 会员充值回调完整处理
+
+已在 `MemberPackageServiceImpl.handlePayCallback()` 中实现（包含幂等校验、订单更新、会员延期、积分发放）。
+
+#### 9.7.5 电商订单回调处理
+
+需在 `ShopService` 中新增 `handlePayCallback` 方法：
+
+```java
+@Transactional(rollbackFor = Exception.class, timeout = 30)
+public void handlePayCallback(String orderNo, String wechatPayNo) {
+    // 1. 幂等校验
+    if (checkIdempotent(orderNo)) return;
+
+    // 2. 查询订单
+    LambdaQueryWrapper<Order> wrapper = new LambdaQueryWrapper<>();
+    wrapper.eq(Order::getOrderNo, orderNo);
+    Order order = orderMapper.selectOne(wrapper);
+    
+    if (order == null || order.getStatus() != 0) {
+        // 订单不存在或已处理，设置幂等后返回
+        setIdempotent(orderNo);
+        return;
+    }
+
+    // 3. 更新订单状态为待发货
+    order.setStatus(1);  // 待发货
+    order.setPayTime(new Date());
+    orderMapper.updateById(order);
+
+    // 4. 更新商品销量（使用乐观锁防止并发问题）
+    List<OrderProduct> items = orderProductMapper.selectList(
+        new LambdaQueryWrapper<OrderProduct>()
+            .eq(OrderProduct::getOrderNo, orderNo)
+    );
+    for (OrderProduct item : items) {
+        productMapper.incrementSales(item.getProductId(), item.getNum());
+    }
+
+    // 5. 设置幂等标记
+    setIdempotent(orderNo);
+
+    log.info("[电商支付回调] 处理成功 orderNo={}, wechatPayNo={}", orderNo, wechatPayNo);
+}
+```
+
+### 9.8 证书管理
+
+#### 9.8.1 证书类型
+
+| 证书类型 | 文件格式 | 用途 | 是否需要 |
+|----------|----------|------|----------|
+| API证书 | p12（含私钥） | 企业付款到零钱 | 必选 |
+| 平台证书 | pem | V3接口验签 | V2接口不需要 |
+
+#### 9.8.2 证书获取
+
+1. 登录 [微信商户平台](https://pay.weixin.qq.com/)
+2. 进入 账户中心 → API安全 → API证书
+3. 下载证书，格式选择 p12（含私钥）
+4. 解压后获取 `apiclient_cert.p12` 文件
+
+#### 9.8.3 证书部署
+
+**开发环境**：放在 `neop-backend/src/main/resources/cert/apiclient_cert.p12`
+
+**生产环境**：放在 `/data/neop/cert/apiclient_cert.p12`
+
+**对应配置**：
+
+```yaml
+# 开发环境（classpath方式）
+neop.wechat.cert-path: classpath:cert/apiclient_cert.p12
+
+# 生产环境（文件路径方式）
+neop.wechat.cert-path: /data/neop/cert/apiclient_cert.p12
+```
+
+**证书密码**：默认为商户号 `mch_id`
+
+#### 9.8.4 安全注意事项
+
+- 证书文件**严禁**提交到 Git 仓库
+- 已将 `cert/*.p12` 添加到 `.gitignore`
+- 生产环境证书应设置 `600` 权限（仅所有者可读写）
+- 证书到期后需重新下载并部署
+- 容器化部署时通过挂载卷注入证书文件
+
+### 9.9 微信支付配置参数与测试
+
+#### 9.9.1 完整配置参数
+
+```yaml
+neop:
+  wechat:
+    # 微信公众号/小程序 AppID
+    mp-appid: wx1234567890abcdef
+    # 小程序 AppID（如果与公众号不同）
+    mini-appid: wx0987654321fedcba
+    # 公众号密钥
+    mp-secret: your_mp_app_secret_32chars
+    # 微信商户号
+    mch-id: 1600000001
+    # 微信支付API密钥（32位字符）
+    api-key: your_wechat_pay_api_key_32_chars_long
+    # p12证书路径
+    cert-path: classpath:cert/apiclient_cert.p12
+    # 支付回调域名（生产环境为HTTPS域名）
+    notify-domain: https://neop.gongziyu.com
+```
+
+#### 9.9.2 测试环境配置
+
+开发环境可使用 **微信支付沙箱环境** 进行测试：
+
+```yaml
+neop:
+  wechat:
+    # 沙箱环境配置
+    sandbox: true
+    # 沙箱API密钥（通过接口获取）
+    # GET https://api.mch.weixin.qq.com/sandboxnew/pay/getsignkey
+    api-key: sandbox_api_key_from_wechat
+```
+
+**沙箱使用说明**：
+1. 调用 `https://api.mch.weixin.qq.com/sandboxnew/pay/getsignkey` 获取沙箱密钥
+2. 配置 `WxPayConfig.setUseSandboxEnv(true)`
+3. 沙箱环境使用测试金额（如 0.01 元）
+4. 沙箱环境回调地址需公网可达（可使用内网穿透工具 ngrok）
+
+**weixin-java-pay 沙箱开关**：
+
+```java
+// 方式一：通过配置文件
+payConfig.setUseSandboxEnv(true);
+
+// 方式二：动态切换（推荐）
+// 开发环境用沙箱，生产环境用正式
+payConfig.setUseSandboxEnv(!"prod".equals(activeProfile));
+```
+
+#### 9.9.3 回调地址说明
+
+**回调地址必须是公网可达的 HTTPS 地址**，开发环境可以使用以下方案：
+
+**方案一：内网穿透（开发测试）**
+
+```bash
+# 使用 ngrok 暴露本地服务
+ngrok http 8080
+
+# 得到公网地址：https://xxxx.ngrok.io
+# 在 dev.yml 中配置：
+notify-domain: https://xxxx.ngrok.io
+```
+
+**方案二：直接部署到测试服务器**
+
+**方案三：使用宝塔面板（生产环境）**
+
+> 宝塔面板申请SSL证书，开启HTTPS强制跳转，微信支付回调必须使用HTTPS。
+
+#### 9.9.4 常见问题排查
+
+| 问题 | 原因 | 解决方案 |
+|------|------|----------|
+| 统一下单返回 `INVALID_REQUEST` | 参数格式错误或缺失 | 检查 out_trade_no 是否唯一、total_fee 是否为整数分 |
+| 统一下单返回 `NOAUTH` | 商户号未配置JSAPI支付权限 | 在微信商户平台 → 产品中心 → 开发配置中配置支付目录 |
+| 企业付款返回 `NOAUTH` | 商户号未开通企业付款功能 | 在微信商户平台 → 产品中心 → 企业付款到零钱中申请开通 |
+| 企业付款返回 `AMOUNT_LIMIT` | 金额超出限制 | 单笔最低1元，最高20000元 |
+| 企业付款返回 `PAY_FAIL` | 用户未实名或未绑定银行卡 | 引导用户完成微信实名认证 |
+| 回调收不到通知 | notify_url 不可达 | 检查网络连通性、防火墙、HTTPS证书 |
+| 回调验签失败 | API密钥不匹配或参数被篡改 | 检查 api-key 配置、不要手动修改回调报文 |
+| 证书加载失败 | 证书路径错误或证书已过期 | 检查 cert-path、重新下载证书 |
+| `Illegal key size` 异常 | JDK 加密策略限制 | JDK 21 默认已支持无限强度加密 |
+
+#### 9.9.5 微信商户平台配置清单
+
+部署前需在 [微信商户平台](https://pay.weixin.qq.com/) 完成以下配置：
+
+1. **API密钥设置**：账户中心 → API安全 → API密钥 → 设置32位密钥
+2. **API证书下载**：账户中心 → API安全 → API证书 → 下载 p12 证书
+3. **支付配置**：产品中心 → 开发配置
+   - JSAPI支付：设置 authorized URL（网页授权域名）
+   - H5支付：设置 H5 支付域名
+4. **企业付款开通**：产品中心 → 企业付款到零钱 → 申请开通
+5. **退款配置**（如果有需要）：产品中心 → 退款配置
+
+**JSAPI支付目录配置示例**：
+```
+https://neop.gongziyu.com/            # 公众号JSAPI支付
+https://neop.gongziyu.com/api/         # 支付回调路径（可选）
+```
 
 ---
 
