@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>任务大厅 - NEOP</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .task-card {
+      background: var(--white);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      transition: transform 0.2s, box-shadow 0.2s;
+      cursor: pointer;
+    }
+    .task-card:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-md);
+    }
+    .task-cover {
+      height: 160px;
+      background: linear-gradient(135deg, var(--primary-bg) 0%, #e0e7ff 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3rem;
+    }
+    .task-cover img {
+      width: 100%; height: 100%; object-fit: cover;
+    }
+    .task-body {
+      padding: 16px;
+    }
+    .task-title {
+      font-weight: 600;
+      font-size: 1rem;
+      margin-bottom: 6px;
+    }
+    .task-intro {
+      font-size: 0.8125rem;
+      color: var(--gray-500);
+      margin-bottom: 12px;
+    }
+    .task-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8125rem;
+    }
+    .task-reward {
+      color: var(--danger);
+      font-weight: 700;
+    }
+    .task-stock {
+      color: var(--gray-400);
+    }
+
+    /* Detail modal (inline) */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 520px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--gray-100);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: var(--gray-400);
+      padding: 4px;
+    }
+    .modal-body { padding: 20px; }
+
+    .detail-cover {
+      width: 100%;
+      height: 200px;
+      background: linear-gradient(135deg, var(--primary-bg), #e0e7ff);
+      border-radius: var(--radius);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 4rem;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+    .detail-cover img {
+      width: 100%; height: 100%; object-fit: cover;
+    }
+    .detail-meta {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .detail-meta-item {
+      background: var(--gray-50);
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      text-align: center;
+      min-width: 80px;
+    }
+    .detail-meta-item .val {
+      font-size: 1.125rem;
+      font-weight: 700;
+      color: var(--primary);
+    }
+    .detail-meta-item .lbl {
+      font-size: 0.75rem;
+      color: var(--gray-500);
+    }
+    .detail-content {
+      line-height: 1.8;
+      font-size: 0.9375rem;
+      color: var(--gray-700);
+    }
+
+    .my-task-item {
+      padding: 14px 0;
+      border-bottom: 1px solid var(--gray-100);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+  </style>
+</head>
+<body data-page="task">
+  <div data-header></div>
+
+  <div class="container">
+    <h1 class="page-title">任务大厅</h1>
+    <p class="page-subtitle">完成任务赚取积分奖励</p>
+
+    <!-- Search & Tabs -->
+    <div class="search-bar">
+      <input type="text" class="form-input" id="taskKeyword" placeholder="搜索任务..." onkeydown="if(event.key==='Enter')loadTasks(1)">
+      <button class="btn btn-primary" onclick="loadTasks(1)">搜索</button>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('all')">全部任务</button>
+      <button class="tab" onclick="switchTab('my')">我的任务</button>
+    </div>
+
+    <!-- Task List -->
+    <div class="grid grid-3" id="taskList">
+      <div class="loading"><div class="spinner"></div><p>加载中...</p></div>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination" id="taskPagination"></div>
+
+    <!-- My Task List -->
+    <div id="myTaskList" class="hidden">
+      <div class="loading"><div class="spinner"></div><p>加载中...</p></div>
+    </div>
+    <div class="pagination" id="myTaskPagination"></div>
+  </div>
+
+  <!-- Detail Modal (hidden) -->
+  <div id="detailModal" class="modal-overlay hidden" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+      <div class="modal-header">
+        <strong id="detailTitle">任务详情</strong>
+        <button class="modal-close" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-body" id="detailBody"></div>
+    </div>
+  </div>
+
+  <!-- Submit Modal -->
+  <div id="submitModal" class="modal-overlay hidden" onclick="if(event.target===this)closeSubmitModal()">
+    <div class="modal">
+      <div class="modal-header">
+        <strong>提交任务</strong>
+        <button class="modal-close" onclick="closeSubmitModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="submitReceiveId">
+        <div class="form-group">
+          <label class="form-label">提交说明</label>
+          <textarea class="form-input" id="submitNote" rows="3" placeholder="请输入提交说明..."></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">截图链接（逗号分隔多个URL）</label>
+          <input type="text" class="form-input" id="submitImages" placeholder="https://example.com/img1.png, https://example.com/img2.png">
+        </div>
+        <button class="btn btn-primary btn-block" onclick="handleSubmit()">确认提交</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/common.js"></script>
+  <script>
+    let taskPage = { current: 1, size: 12 };
+    let myTaskPage = { current: 1, size: 10 };
+    let activeTab = 'all';
+
+    /* ---- Init ---- */
+    (function init() {
+      loadTasks(1);
+    })();
+
+    function switchTab(tab) {
+      activeTab = tab;
+      document.querySelectorAll('.tab').forEach((t, i) => {
+        t.classList.toggle('active', (i === 0 && tab === 'all') || (i === 1 && tab === 'my'));
+      });
+      document.getElementById('taskList').classList.toggle('hidden', tab !== 'all');
+      document.getElementById('taskPagination').classList.toggle('hidden', tab !== 'all');
+      document.getElementById('myTaskList').classList.toggle('hidden', tab !== 'my');
+      document.getElementById('myTaskPagination').classList.toggle('hidden', tab !== 'my');
+
+      if (tab === 'all') loadTasks(1);
+      else loadMyTasks(1);
+    }
+
+    /* ---- Task List ---- */
+    async function loadTasks(page) {
+      taskPage.current = page;
+      const container = document.getElementById('taskList');
+      container.className = 'grid grid-3';
+      container.innerHTML = '<div class="loading"><div class="spinner"></div><p>加载中...</p></div>';
+
+      const keyword = document.getElementById('taskKeyword').value.trim() || undefined;
+      const res = await PublicAPI.taskList({ current: page, size: taskPage.size, keyword });
+
+      if (res.code === 200 && res.data.records?.length) {
+        container.innerHTML = res.data.records.map(t => `
+          <div class="task-card" onclick="openDetail(${t.id})">
+            <div class="task-cover">
+              ${t.taskCover ? '<img src="' + t.taskCover + '" alt="" onerror="this.parentElement.innerHTML=\'🎯\'">' : '🎯'}
+            </div>
+            <div class="task-body">
+              <div class="task-title">${t.taskTitle}</div>
+              <div class="task-intro">${truncate(t.taskIntro, 40)}</div>
+              <div class="task-meta">
+                <span class="task-reward">${formatMoney(t.rewardAmount)}</span>
+                <span class="task-stock">剩余 ${t.totalNum ?? '-'} 份</span>
+              </div>
+            </div>
+          </div>
+        `).join('');
+        renderPagination(document.getElementById('taskPagination'), taskPage, res.data.total, loadTasks);
+      } else {
+        container.className = '';
+        container.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><p class="empty-text">暂无任务</p></div>';
+        document.getElementById('taskPagination').innerHTML = '';
+      }
+    }
+
+    /* ---- Detail Modal ---- */
+    async function openDetail(id) {
+      const modal = document.getElementById('detailModal');
+      const body = document.getElementById('detailBody');
+      modal.classList.remove('hidden');
+      body.innerHTML = '<div class="loading"><div class="spinner"></div><p>加载中...</p></div>';
+
+      const res = await PublicAPI.taskInfo(id);
+      if (res.code === 200) {
+        const t = res.data;
+        document.getElementById('detailTitle').textContent = t.taskTitle;
+        body.innerHTML = `
+          <div class="detail-cover">
+            ${t.taskCover ? '<img src="' + t.taskCover + '" alt="" onerror="this.parentElement.innerHTML=\'🎯\'">' : '🎯'}
+          </div>
+          <div class="detail-meta">
+            <div class="detail-meta-item">
+              <div class="val">${formatMoney(t.rewardAmount)}</div>
+              <div class="lbl">奖励金额</div>
+            </div>
+            <div class="detail-meta-item">
+              <div class="val">${t.totalNum ?? '-'}</div>
+              <div class="lbl">总数量</div>
+            </div>
+            <div class="detail-meta-item">
+              <div class="val">${t.dayNum ?? '-'}</div>
+              <div class="lbl">每日限额</div>
+            </div>
+            <div class="detail-meta-item">
+              <div class="val">${t.expireMinute ?? '-'}分</div>
+              <div class="lbl">有效时长</div>
+            </div>
+          </div>
+          <div class="mb-4"><strong>任务简介</strong><p style="margin-top:8px;">${t.taskIntro || '暂无简介'}</p></div>
+          <div class="detail-content"><strong>任务详情</strong><p style="margin-top:8px;">${t.taskContent || '暂无详情'}</p></div>
+          <div class="mt-4">
+            <button class="btn btn-primary btn-block btn-lg" onclick="handleReceive(${t.id})">立即领取</button>
+          </div>
+        `;
+      } else {
+        body.innerHTML = '<div class="error-box">' + (res.msg || '加载失败') + '</div>';
+      }
+    }
+
+    function closeModal() {
+      document.getElementById('detailModal').classList.add('hidden');
+    }
+
+    /* ---- Receive Task ---- */
+    async function handleReceive(taskId) {
+      if (!getToken()) {
+        showToast('请先登录', 'error');
+        setTimeout(() => location.href = 'user.html', 1000);
+        return;
+      }
+      const res = await TaskAPI.receive(taskId);
+      if (res.code === 200) {
+        showToast('领取成功！请在有效期内完成提交');
+        closeModal();
+      } else {
+        showToast(res.msg || '领取失败', 'error');
+      }
+    }
+
+    /* ---- My Tasks ---- */
+    async function loadMyTasks(page) {
+      if (!getToken()) {
+        document.getElementById('myTaskList').innerHTML = `
+          <div class="empty">
+            <div class="empty-icon">🔐</div>
+            <p class="empty-text">请先<a href="user.html">登录</a>后查看我的任务</p>
+          </div>`;
+        return;
+      }
+
+      myTaskPage.current = page;
+      const container = document.getElementById('myTaskList');
+      container.innerHTML = '<div class="loading"><div class="spinner"></div><p>加载中...</p></div>';
+
+      const res = await TaskAPI.myList({ current: page, size: myTaskPage.size });
+      if (res.code === 200 && res.data.records?.length) {
+        container.innerHTML = res.data.records.map(r => {
+          const st = { 0: '待审核', 1: '已通过', 2: '已驳回', 3: '待提交', 5: '已过期' };
+          const cls = { 0: 'tag-warning', 1: 'tag-success', 2: 'tag-danger', 3: 'tag-gray', 5: 'tag-gray' };
+          return `
+            <div class="my-task-item">
+              <div>
+                <div style="font-weight:500;">${r.taskTitle || '任务' + r.taskId}</div>
+                <span class="text-muted text-sm">领取时间：${formatDate(r.createTime)}</span>
+              </div>
+              <div class="flex gap-2" style="align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+                <span class="tag ${cls[r.auditStatus] || 'tag-gray'}">${st[r.auditStatus] || '未知'}</span>
+                <span class="price">${formatMoney(r.rewardAmount || r.taskReward)}</span>
+                ${r.auditStatus === 3 ? `<button class="btn btn-primary btn-sm" onclick="openSubmit(${r.id})">提交</button>` : ''}
+                ${r.auditStatus === 1 ? `<button class="btn btn-success btn-sm" onclick="handleWithdraw(${r.id})">提现</button>` : ''}
+              </div>
+            </div>`;
+        }).join('');
+        renderPagination(document.getElementById('myTaskPagination'), myTaskPage, res.data.total, loadMyTasks);
+      } else {
+        container.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><p class="empty-text">暂无任务记录</p></div>';
+        document.getElementById('myTaskPagination').innerHTML = '';
+      }
+    }
+
+    /* ---- Submit Task ---- */
+    function openSubmit(receiveId) {
+      document.getElementById('submitReceiveId').value = receiveId;
+      document.getElementById('submitNote').value = '';
+      document.getElementById('submitImages').value = '';
+      document.getElementById('submitModal').classList.remove('hidden');
+    }
+
+    function closeSubmitModal() {
+      document.getElementById('submitModal').classList.add('hidden');
+    }
+
+    async function handleSubmit() {
+      const receiveId = document.getElementById('submitReceiveId').value;
+      const note = document.getElementById('submitNote').value.trim();
+      const imagesRaw = document.getElementById('submitImages').value.trim();
+      const images = imagesRaw ? imagesRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
+
+      const res = await TaskAPI.submit(Number(receiveId), images, note);
+      if (res.code === 200) {
+        showToast('提交成功，等待审核');
+        closeSubmitModal();
+        loadMyTasks(myTaskPage.current);
+      } else {
+        showToast(res.msg || '提交失败', 'error');
+      }
+    }
+
+    /* ---- Withdraw ---- */
+    async function handleWithdraw(receiveId) {
+      const res = await TaskAPI.withdrawApply(receiveId);
+      if (res.code === 200) {
+        showToast('提现申请已提交');
+      } else {
+        showToast(res.msg || '申请失败', 'error');
+      }
+    }
+  </script>
+</body>
+</html>

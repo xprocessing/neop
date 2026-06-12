@@ -5,9 +5,9 @@
 ![Neop Logo](https://img.shields.io/badge/Neop-任务积分电商-blue)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.0-brightgreen)
 ![Vue3](https://img.shields.io/badge/Vue-3.4.0-green)
-![UniApp](https://img.shields.io/badge/UniApp-3.0.0-orange)
+![WeChat](https://img.shields.io/badge/WeChat_Mini_Program-3.0.0-brightgreen)
 
-**一个基于 Spring Boot + Vue3 + UniApp 的全栈任务积分电商平台**
+**一个基于 Spring Boot + Vue3 + 微信小程序 的全栈任务积分电商平台**
 
 [在线演示](#) · [开发文档](./neop开发文档.md) · [问题反馈](#)
 
@@ -17,7 +17,7 @@
 
 ## 📖 项目简介
 
-Neop 是一个完整的任务积分电商平台，集成了**任务系统**、**积分商城**、**分销体系**、**内容社区**等核心功能。项目采用前后端分离架构，提供完整的移动端（UniApp）和后台管理端（Vue3）解决方案。
+Neop 是一个完整的任务积分电商平台，集成了**任务系统**、**积分商城**、**分销体系**、**内容社区**等核心功能。项目采用前后端分离架构，提供完整的移动端（微信小程序）和后台管理端（Vue3）解决方案。
 
 ### ✨ 核心特性
 
@@ -47,11 +47,11 @@ Neop 平台
 │   ├── 20 个功能页面
 │   └── 完整的权限管理系统
 │
-└── neop-uniapp (移动端)
-    ├── UniApp 3.0 跨端框架
+└── neop-miniapp (移动端)
+    ├── 微信小程序原生开发
     ├── Vue 3 + Pinia 状态管理
     ├── 27 个功能页面
-    └── 支持微信小程序/H5/App
+    └── 支持微信小程序
 ```
 
 ---
@@ -87,11 +87,10 @@ Neop 平台
 
 | 技术 | 版本 | 说明 |
 |------|------|------|
-| UniApp | 3.0.0 | 跨端框架 |
+| 微信小程序 | - | 微信原生小程序 |
 | Vue | 3.3.0 | 渐进式框架 |
 | Pinia | 2.1.0 | 状态管理 |
-| Uni UI | 1.4.0 | UI 组件库 |
-| William-Zhang | 1.3.3 | 扩展组件库 |
+| 微信开发者工具 | - | 官方开发工具 |
 
 ---
 
@@ -141,7 +140,7 @@ neop/
 │   ├── public/
 │   └── package.json
 │
-├── neop-uniapp/              # UniApp 移动端
+├── neop-miniapp/              # 微信小程序
 │   ├── pages/
 │   │   ├── index/          # 首页
 │   │   ├── task/           # 任务页面
@@ -184,7 +183,7 @@ neop/
 - **MySQL**: 8.0+
 - **Redis**: 7.0+
 - **Maven**: 3.8+
-- **HBuilderX**: 3.8+ (UniApp 开发)
+- **微信开发者工具**: (小程序开发)
 
 ### 1. 克隆项目
 
@@ -238,11 +237,9 @@ npm run dev
 
 ### 4. 移动端启动
 
-1. 使用 HBuilderX 打开 `neop-uniapp` 目录
-2. 配置小程序 AppID（公众号平台申请）
-3. 点击「运行」→「运行到小程序模拟器」→「微信开发者工具」
-
-或者运行到浏览器（H5）：
+1. 使用微信开发者工具打开 `neop-miniapp` 目录
+2. 配置小程序 AppID（微信公众平台申请）
+3. 点击「编译」预览小程序
 
 ```bash
 # 在 HBuilderX 中点击「运行」→「运行到浏览器」→「Chrome」
@@ -349,7 +346,7 @@ upload:
 const BASE_URL = 'http://localhost:8080/neop'
 ```
 
-**移动端**：编辑 `neop-uniapp/utils/request.js`
+**移动端**：编辑 `neop-miniapp/utils/request.js`
 
 ```javascript
 const BASE_URL = 'http://localhost:8080/neop'
@@ -357,7 +354,7 @@ const BASE_URL = 'http://localhost:8080/neop'
 
 #### 2. 小程序配置
 
-编辑 `neop-uniapp/manifest.json`：
+编辑 `neop-miniapp/app.json`：
 
 ```json
 {
@@ -500,8 +497,8 @@ cd neop-admin-web
 npm run test
 
 # 移动端
-cd neop-uniapp
-npm run test
+cd neop-miniapp
+# 使用微信开发者工具打开项目预览
 ```
 
 ---
@@ -522,7 +519,7 @@ npm run test
 |------|------|----------|
 | 后端开发 | 业务逻辑、API 开发 | Java、Spring Boot、MySQL |
 | 前端开发 | 后台管理页面 | Vue3、Element Plus、Vite |
-| 移动端开发 | UniApp 页面 | Vue3、UniApp、微信小程序 |
+| 移动端开发 | 微信小程序页面 | Vue3、微信小程序 |
 | UI 设计 | 界面设计、交互优化 | Figma、Sketch |
 | 测试 | 功能测试、性能测试 | 测试工具、自动化测试 |
 | 运维 | 部署、监控、运维 | Linux、Docker、Nginx |
@@ -561,7 +558,7 @@ npm run test
 
 - [Spring Boot](https://spring.io/projects/spring-boot)
 - [Vue](https://vuejs.org/)
-- [UniApp](https://uniapp.dcloud.net.cn/)
+- [微信小程序](https://developers.weixin.qq.com/miniprogram/dev/)
 - [Element Plus](https://element-plus.org/)
 - [MyBatis Plus](https://baomidou.com/)
 - [WxJava](https://github.com/Wechat-Group/WxJava)

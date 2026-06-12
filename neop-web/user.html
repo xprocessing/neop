@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>个人中心 - NEOP</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .auth-container {
+      max-width: 420px;
+      margin: 0 auto;
+    }
+    .auth-tabs {
+      display: flex;
+      margin-bottom: 24px;
+      background: var(--white);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+    .auth-tab {
+      flex: 1;
+      padding: 14px;
+      text-align: center;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 0.9375rem;
+      border: none;
+      background: var(--gray-100);
+      color: var(--gray-600);
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+    .auth-tab.active {
+      background: var(--white);
+      color: var(--primary);
+      box-shadow: inset 0 -2px 0 var(--primary);
+    }
+
+    .profile-header {
+      background: linear-gradient(135deg, var(--primary) 0%, #7c3aed 100%);
+      border-radius: var(--radius-lg);
+      padding: 32px 24px;
+      color: var(--white);
+      margin-bottom: 24px;
+    }
+    .profile-avatar {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      font-weight: 700;
+      margin: 0 auto 12px;
+    }
+    .profile-avatar img {
+      width: 100%; height: 100%; border-radius: 50%; object-fit: cover;
+    }
+    .profile-name {
+      font-size: 1.25rem;
+      font-weight: 600;
+      text-align: center;
+    }
+    .profile-id {
+      font-size: 0.8125rem;
+      opacity: 0.8;
+      text-align: center;
+      margin-top: 4px;
+    }
+    .points-display {
+      display: flex;
+      justify-content: center;
+      gap: 32px;
+      margin-top: 20px;
+      text-align: center;
+    }
+    .points-item .num {
+      font-size: 1.5rem;
+      font-weight: 800;
+    }
+    .points-item .label {
+      font-size: 0.75rem;
+      opacity: 0.8;
+    }
+
+    .info-table {
+      width: 100%;
+    }
+    .info-table td {
+      padding: 12px 8px;
+      border-bottom: 1px solid var(--gray-100);
+      vertical-align: top;
+    }
+    .info-table td:first-child {
+      color: var(--gray-500);
+      width: 80px;
+      font-size: 0.875rem;
+      white-space: nowrap;
+    }
+    .info-table td:last-child {
+      color: var(--gray-800);
+      font-size: 0.9375rem;
+    }
+
+    .points-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--gray-100);
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .points-row .label {
+      font-size: 0.875rem;
+      color: var(--gray-500);
+    }
+    .points-row .val {
+      font-weight: 500;
+    }
+
+    .invite-box {
+      background: var(--white);
+      border-radius: var(--radius);
+      padding: 24px;
+      text-align: center;
+      box-shadow: var(--shadow);
+    }
+    .invite-code {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--primary);
+      letter-spacing: 4px;
+      margin: 12px 0;
+    }
+
+    .hidden { display: none; }
+  </style>
+</head>
+<body data-page="user">
+  <div data-header></div>
+
+  <div class="container">
+
+    <!-- ======================== LOGGED OUT ======================== -->
+    <div id="authSection">
+      <div class="auth-container">
+        <div class="auth-tabs">
+          <button class="auth-tab active" onclick="switchAuthTab('login')">登录</button>
+          <button class="auth-tab" onclick="switchAuthTab('register')">注册</button>
+        </div>
+
+        <div class="card" id="loginForm">
+          <div class="card-header">手机号登录</div>
+          <div class="card-body">
+            <div class="form-group">
+              <label class="form-label">手机号</label>
+              <input type="tel" class="form-input" id="loginPhone" placeholder="请输入手机号" maxlength="11">
+            </div>
+            <div class="form-group">
+              <label class="form-label">密码</label>
+              <input type="password" class="form-input" id="loginPwd" placeholder="请输入密码">
+            </div>
+            <button class="btn btn-primary btn-block" onclick="handleLogin()">登录</button>
+            <p class="text-muted text-sm text-center mt-3">默认测试账号：任意手机号注册即可</p>
+          </div>
+        </div>
+
+        <div class="card hidden" id="registerForm">
+          <div class="card-header">手机号注册</div>
+          <div class="card-body">
+            <div class="form-group">
+              <label class="form-label">手机号</label>
+              <input type="tel" class="form-input" id="regPhone" placeholder="请输入手机号" maxlength="11">
+            </div>
+            <div class="form-group">
+              <label class="form-label">设置密码</label>
+              <input type="password" class="form-input" id="regPwd" placeholder="请设置密码（6-20位）">
+            </div>
+            <div class="form-group">
+              <label class="form-label">邀请码（选填）</label>
+              <input type="text" class="form-input" id="regInvite" placeholder="请输入邀请码">
+            </div>
+            <button class="btn btn-primary btn-block" onclick="handleRegister()">注册</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================== LOGGED IN ======================== -->
+    <div id="profileSection" class="hidden">
+      <!-- Profile Header -->
+      <div class="profile-header">
+        <div class="profile-avatar" id="profileAvatar">U</div>
+        <div class="profile-name" id="profileName">-</div>
+        <div class="profile-id" id="profilePhone">-</div>
+        <div class="points-display">
+          <div class="points-item">
+            <div class="num" id="profilePoints">0</div>
+            <div class="label">积分余额</div>
+          </div>
+          <div class="points-item">
+            <div class="num" id="profileSigned">-</div>
+            <div class="label">连续签到</div>
+          </div>
+        </div>
+        <div class="text-center mt-3">
+          <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;" onclick="handleSign()" id="signBtn">🎁 今日签到</button>
+        </div>
+      </div>
+
+      <!-- User Info Card -->
+      <div class="card mb-6">
+        <div class="card-header">个人信息</div>
+        <div class="card-body">
+          <table class="info-table" id="infoTable"></table>
+        </div>
+      </div>
+
+      <!-- Points Detail -->
+      <div class="card mb-6">
+        <div class="card-header flex-between">
+          <span>积分明细</span>
+          <div class="flex gap-2">
+            <select class="form-input" style="width:auto;padding:6px 10px;font-size:0.8125rem;" id="pointsTypeFilter" onchange="loadPointsDetail(1)">
+              <option value="">全部类型</option>
+              <option value="sign">签到</option>
+              <option value="invite">邀请</option>
+              <option value="task">任务</option>
+              <option value="order">消费</option>
+            </select>
+          </div>
+        </div>
+        <div class="card-body" id="pointsDetail">
+          <div class="loading"><div class="spinner"></div><p>加载中...</p></div>
+        </div>
+      </div>
+
+      <!-- Invite Info -->
+      <div class="card mb-6">
+        <div class="card-header">邀请好友</div>
+        <div class="card-body">
+          <div class="invite-box" id="inviteBox">
+            <p class="text-muted">我的邀请码</p>
+            <div class="invite-code" id="inviteCode">-</div>
+            <p class="text-sm text-muted mt-2">每邀请一位好友注册，双方各获得积分奖励</p>
+          </div>
+          <div class="section-title mt-6">邀请记录</div>
+          <div id="inviteList">
+            <div class="loading"><div class="spinner"></div><p>加载中...</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="js/common.js"></script>
+  <script>
+    let currentAuthTab = 'login';
+    let pointsPage = { current: 1, size: 10 };
+
+    /* ---- Check auth state on load ---- */
+    (function init() {
+      const user = getUser();
+      const token = getToken();
+      if (user && token) {
+        showProfile();
+        loadUserData();
+      } else {
+        showAuth();
+      }
+    })();
+
+    function showAuth() {
+      document.getElementById('authSection').classList.remove('hidden');
+      document.getElementById('profileSection').classList.add('hidden');
+    }
+
+    function showProfile() {
+      document.getElementById('authSection').classList.add('hidden');
+      document.getElementById('profileSection').classList.remove('hidden');
+    }
+
+    /* ---- Auth Tabs ---- */
+    function switchAuthTab(tab) {
+      currentAuthTab = tab;
+      document.querySelectorAll('.auth-tab').forEach((t, i) => {
+        t.classList.toggle('active', (i === 0 && tab === 'login') || (i === 1 && tab === 'register'));
+      });
+      document.getElementById('loginForm').classList.toggle('hidden', tab !== 'login');
+      document.getElementById('registerForm').classList.toggle('hidden', tab !== 'register');
+    }
+
+    /* ---- Login ---- */
+    async function handleLogin() {
+      const phone = document.getElementById('loginPhone').value.trim();
+      const password = document.getElementById('loginPwd').value;
+      if (!phone) return showToast('请输入手机号', 'error');
+      if (!password) return showToast('请输入密码', 'error');
+
+      const res = await AuthAPI.login(phone, password);
+      if (res.code === 200) {
+        setToken(res.data.token);
+        setUser({ id: res.data.id, phone });
+        showToast('登录成功');
+        showProfile();
+        loadUserData();
+      } else {
+        showToast(res.msg || '登录失败', 'error');
+      }
+    }
+
+    /* ---- Register ---- */
+    async function handleRegister() {
+      const phone = document.getElementById('regPhone').value.trim();
+      const password = document.getElementById('regPwd').value;
+      const inviteCode = document.getElementById('regInvite').value.trim();
+      if (!phone) return showToast('请输入手机号', 'error');
+      if (!password || password.length < 6) return showToast('密码至少6位', 'error');
+
+      const res = await AuthAPI.register(phone, password, inviteCode);
+      if (res.code === 200) {
+        setToken(res.data.token);
+        setUser({ id: res.data.id, phone, nickname: '用户' + phone.slice(-4) });
+        showToast('注册成功');
+        showProfile();
+        loadUserData();
+      } else {
+        showToast(res.msg || '注册失败', 'error');
+      }
+    }
+
+    /* ---- Load User Data ---- */
+    async function loadUserData() {
+      // User info
+      try {
+        const infoRes = await UserAPI.info();
+        if (infoRes.code === 200) {
+          const u = infoRes.data;
+          document.getElementById('profileName').textContent = u.nickname || u.phone || '-';
+          document.getElementById('profilePhone').textContent = u.phone || '-';
+          document.getElementById('profileAvatar').textContent = (u.nickname || 'U')[0].toUpperCase();
+          if (u.avatar) {
+            document.getElementById('profileAvatar').innerHTML = `<img src="${u.avatar}" alt="">`;
+          }
+          setUser({ ...getUser(), ...u });
+
+          const rows = [
+            ['用户ID', u.id || '-'],
+            ['昵称', u.nickname || '-'],
+            ['手机号', u.phone || '-'],
+            ['性别', u.sex === 1 ? '男' : u.sex === 2 ? '女' : '未设置'],
+            ['状态', u.status === 1 ? '<span class="tag tag-success">正常</span>' : '<span class="tag tag-gray">冻结</span>'],
+            ['注册时间', formatDate(u.createTime)],
+          ];
+          document.getElementById('infoTable').innerHTML = rows.map(r =>
+            `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`
+          ).join('');
+        }
+      } catch {}
+
+      // Points
+      try {
+        const ptsRes = await UserAPI.pointsBalance();
+        if (ptsRes.code === 200) {
+          document.getElementById('profilePoints').textContent = formatPoint(ptsRes.data.point || 0);
+        }
+      } catch {}
+
+      // Sign info
+      try {
+        const signRes = await UserAPI.signInfo();
+        if (signRes.code === 200) {
+          document.getElementById('profileSigned').textContent = signRes.data.continuousDays || 0;
+        }
+      } catch {}
+
+      // Points detail
+      loadPointsDetail(1);
+
+      // Invite info
+      try {
+        const inviteRes = await UserAPI.inviteInfo();
+        if (inviteRes.code === 200) {
+          document.getElementById('inviteCode').textContent = inviteRes.data.inviteCode || '-';
+        }
+      } catch {}
+
+      // Invite list
+      loadInviteList(1);
+    }
+
+    /* ---- Sign In ---- */
+    async function handleSign() {
+      const btn = document.getElementById('signBtn');
+      btn.disabled = true;
+      btn.textContent = '签到中...';
+      const res = await UserAPI.signDo();
+      if (res.code === 200) {
+        showToast(res.data?.msg || '签到成功');
+        // Refresh
+        try {
+          const pts = await UserAPI.pointsBalance();
+          if (pts.code === 200) document.getElementById('profilePoints').textContent = formatPoint(pts.data.point || 0);
+          const sign = await UserAPI.signInfo();
+          if (sign.code === 200) document.getElementById('profileSigned').textContent = sign.data.continuousDays || 0;
+        } catch {}
+      } else {
+        showToast(res.msg || '签到失败', 'error');
+      }
+      btn.disabled = false;
+      btn.textContent = '🎁 今日签到';
+    }
+
+    /* ---- Points Detail ---- */
+    async function loadPointsDetail(page) {
+      pointsPage.current = page;
+      const container = document.getElementById('pointsDetail');
+      container.innerHTML = '<div class="loading"><div class="spinner"></div><p>加载中...</p></div>';
+
+      const type = document.getElementById('pointsTypeFilter').value;
+      const res = await UserAPI.pointsDetail({ current: page, size: pointsPage.size, type: type || undefined });
+      if (res.code === 200 && res.data.records?.length) {
+        let html = res.data.records.map(r => `
+          <div class="points-row">
+            <span class="label">${r.description || r.type || '-'}</span>
+            <span style="color:${(r.point||0) >= 0 ? 'var(--success)' : 'var(--danger)'};font-weight:600;">
+              ${(r.point || 0) >= 0 ? '+' : ''}${r.point || 0}
+            </span>
+            <span class="text-muted text-sm">${formatDate(r.createTime)}</span>
+          </div>
+        `).join('');
+        html += '<div id="pointsPagination" class="pagination"></div>';
+        container.innerHTML = html;
+        renderPagination(document.getElementById('pointsPagination'), pointsPage, res.data.total, loadPointsDetail);
+      } else {
+        container.innerHTML = '<div class="empty"><p class="empty-text">暂无积分记录</p></div>';
+      }
+    }
+
+    /* ---- Invite List ---- */
+    async function loadInviteList(page) {
+      const container = document.getElementById('inviteList');
+      const res = await UserAPI.inviteList({ current: page, size: 10 });
+      if (res.code === 200 && res.data.records?.length) {
+        container.innerHTML = res.data.records.map(r => `
+          <div style="padding:14px 0;border-bottom:1px solid var(--gray-100);display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <span style="font-weight:500;">${r.nickname || '用户' + String(r.userId||'').slice(-4)}</span>
+              <span class="text-muted text-sm" style="margin-left:8px;">${formatDate(r.createTime)}</span>
+            </div>
+            <span class="tag tag-success">+${r.rewardPoint || 0}</span>
+          </div>
+        `).join('');
+      } else {
+        container.innerHTML = '<div class="empty"><p class="empty-text">暂无邀请记录</p></div>';
+      }
+    }
+  </script>
+</body>
+</html>

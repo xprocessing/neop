@@ -12,28 +12,34 @@
 - **后端**：Java 21 + SpringBoot + MyBatis-Plus
 - **数据库**：MySQL 8.4
 - **缓存**：Redis 7（必选，用于Token黑名单、幂等校验、计数限流、热数据缓存）
-- **前端**：Vue3+PC后台 + UniApp多端（H5/小程序/APP）
+- **前端**：PC后台(Vue3) + 微信小程序(原生) + Android(原生Kotlin) + iOS(原生Swift) + 鸿蒙(原生ArkTS) — **五端原生开发，不做UniApp跨端**
 - **服务环境**：Nginx 1.28、Node.js 24、Python3
 - **支付能力**：微信企业付款到零钱（单笔任务独立打款）
 
 ### 1.1 系统架构图 & 部署拓扑
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                        客户端                                │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐                  │
-│  │ 微信小程序 │  │  H5浏览器  │  │  APP端   │                  │
-│  └─────┬────┘  └─────┬────┘  └─────┬────┘                  │
-└────────┼─────────────┼─────────────┼────────────────────────┘
-         │             │             │
-         ▼             ▼             ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│                        客户端（五端原生）                               │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐  │
+│  │  微信     │ │  Android  │ │   iOS    │ │   鸿蒙    │ │  PC后台   │  │
+│  │  小程序   │ │  原生App  │ │  原生App  │ │  原生App  │ │  Vue3    │  │
+│  │  (原生)   │ │ (Kotlin)  │ │ (Swift)  │ │ (ArkTS)  │ │  (Web)   │  │
+│  └─────┬────┘ └─────┬────┘ └─────┬────┘ └─────┬────┘ └─────┬────┘  │
+└────────┼────────────┼────────────┼────────────┼────────────┼────────┘
+         │            │            │            │            │
+         ▼            ▼            ▼            ▼            ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                    Nginx 1.28 (反向代理)                      │
 │  ┌───────────────────────────────────────────────────────┐  │
 │  │  HTTPS终止 + 负载均衡 + 静态资源托管                      │  │
 │  │  /api/*      → 后端SpringBoot :8080                    │  │
 │  │  /admin/*    → Vue3后台管理 :3000                       │  │
-│  │  /           → UniApp H5 :8081                         │  │
+│  │  _           → 五端原生客户端(不依赖Nginx前端托管)       │  │
+│  │  微信小程序: 微信内直接运行 wx.request → /api/*         │  │
+│  │  Android:    Retrofit → /api/*                          │  │
+│  │  iOS:        URLSession → /api/*                        │  │
+│  │  鸿蒙:       http.createHttp() → /api/*                 │  │
 │  └───────────────────────────────────────────────────────┘  │
 └──────────────────────────┬──────────────────────────────────┘
                            │
@@ -65,7 +71,10 @@
 | Nginx | 80/443 | 对外统一入口，HTTPS终止 |
 | SpringBoot | 8080 | 后端API服务，仅Nginx内网访问 |
 | Vue3 Admin | 3000 | 后台管理前端dev模式，生产由Nginx托管dist |
-| UniApp H5 | 8081 | 移动端H5 dev模式，生产由Nginx托管dist |
+| 微信小程序 | - | 微信开发者工具原生开发，微信内直接运行 |
+| Android原生 | - | Android Studio (Kotlin)，直接请求API |
+| iOS原生 | - | Xcode (Swift)，直接请求API |
+| 鸿蒙原生 | - | DevEco Studio (ArkTS)，直接请求API |
 | MySQL | 3306 | 数据库，仅内网访问 |
 | Redis | 6379 | 缓存服务，仅内网访问，必须设置密码 |
 
@@ -95,11 +104,11 @@ server {
         try_files $uri $uri/ /admin/index.html;
     }
 
-    # 移动端H5
-    location / {
-        alias /var/www/neop-uniapp/dist/build/h5/;
-        try_files $uri $uri/ /index.html;
-    }
+    # 微信小程序（无需Nginx托管，在微信内直接运行）
+    # 小程序通过 wx.request 直接访问 /api/ 接口
+
+    # Android/iOS/鸿蒙原生App（不依赖Nginx托管）
+    # 原生App通过 HTTP Client 直接访问 /api/ 接口
 }
 ```
 
@@ -278,24 +287,129 @@ neop-admin-web/
 │   └── assets/        # 静态资源
 ```
 
-### 3.3 移动端（UniApp）
+### 3.3 五端前端项目目录（原生开发）
+
+**说明**：五端均为原生开发，各端独立项目目录，共享同一套后端 REST API。各端代码不共用，UI风格保持一致但各端独立实现。
+
+#### 3.3.1 微信小程序（原生，微信开发者工具）
 
 ```Plaintext
-neop-uniapp/
-├── App.vue
-├── main.js
-├── pages.json
-├── manifest.json
+neop-wxapp/
+├── app.js
+├── app.json
+├── app.wxss
+├── project.config.json
 ├── pages/
-│   ├── index/       # 任务广场
-│   ├── user/        # 个人中心
-│   ├── task/        # 任务相关
-│   ├── trade/       # 电商
-│   └── common/      # 公共页面
-├── components/
-├── utils/
-└── static/
+│   ├── index/          # 任务广场（首页）
+│   ├── user/           # 个人中心
+│   ├── task/           # 任务详情/领取/提交
+│   ├── trade/          # 电商商品/订单
+│   └── common/         # 公共页面（登录、关于等）
+├── components/         # 自定义组件
+├── utils/              # 工具函数（请求封装、时间格式化等）
+├── api/                # API接口封装（统一request拦截）
+├── images/             # 本地图标/静态资源
+└── style/              # 全局样式（主题色、字体规范）
 ```
+
+**开发工具**：微信开发者工具
+**语言/框架**：JavaScript + WXML + WXSS（原生小程程序框架）
+**请求方式**：wx.request → /api/*
+
+#### 3.3.2 Android 原生（Kotlin，Android Studio）
+
+```Plaintext
+neop-android/
+├── build.gradle.kts              # 工程级构建配置
+├── settings.gradle.kts
+├── app/
+│   ├── build.gradle.kts          # 模块构建配置
+│   └── src/main/
+│       ├── AndroidManifest.xml
+│       ├── java/com/gongziyu/neop/
+│       │   ├── NeopApplication.kt
+│       │   ├── MainActivity.kt
+│       │   ├── ui/               # UI层（Activity/Fragment）
+│       │   │   ├── task/         # 任务模块
+│       │   │   ├── trade/        # 电商模块
+│       │   │   ├── user/         # 用户模块
+│       │   │   ├── member/       # 会员模块
+│       │   │   └── common/       # 公共组件
+│       │   ├── network/          # 网络请求（Retrofit + OkHttp）
+│       │   ├── data/             # 数据层（Repository/Model）
+│       │   ├── viewmodel/        # ViewModel
+│       │   └── util/             # 工具类
+│       └── res/                  # 资源文件
+│           ├── layout/           # XML布局
+│           ├── drawable/         # 图标/图片
+│           ├── values/           # 颜色/字符串/主题
+│           └── navigation/       # 导航图
+```
+
+**开发工具**：Android Studio
+**语言**：Kotlin
+**主要依赖**：Retrofit + OkHttp（网络）、Coil/Glide（图片加载）、ViewModel + LiveData/Flow（MVVM架构）
+**请求方式**：Retrofit → /api/*
+
+#### 3.3.3 iOS 原生（Swift，Xcode）
+
+```Plaintext
+neop-ios/
+├── Neop.xcodeproj
+├── Neop/
+│   ├── App/
+│   │   ├── NeopApp.swift        # App入口
+│   │   └── ContentView.swift    # 根视图
+│   ├── Views/                   # 视图层
+│   │   ├── Task/                # 任务模块
+│   │   ├── Trade/               # 电商模块
+│   │   ├── User/                # 用户模块
+│   │   ├── Member/              # 会员模块
+│   │   └── Common/              # 公共视图
+│   ├── ViewModels/              # 视图模型
+│   ├── Models/                  # 数据模型
+│   ├── Network/                 # 网络层（URLSession / Alamofire）
+│   ├── Services/                # 业务服务
+│   ├── Utils/                   # 工具类
+│   └── Resources/               # 资源文件（Asset Catalog）
+└── Podfile / Package.swift      # 依赖管理
+```
+
+**开发工具**：Xcode
+**语言**：Swift（SwiftUI优先，部分复杂页面可用UIKit）
+**主要依赖**：Alamofire/URLSession（网络）、Kingfisher（图片加载）、Combine/Swift Concurrency（异步处理）
+**请求方式**：Alamofire / URLSession → /api/*
+
+#### 3.3.4 鸿蒙原生（ArkTS，DevEco Studio）
+
+```Plaintext
+neop-harmony/
+├── entry/
+│   ├── build-profile.json5      # 构建配置
+│   └── src/main/
+│       ├── resources/           # 资源文件
+│       │   ├── base/media/      # 图片资源
+│       │   ├── base/element/    # 颜色/字符串
+│       │   └── zh_CN/           # 中文字符串
+│       └── ets/                 # ArkTS源码
+│           ├── entryability/    # Ability入口
+│           ├── pages/           # 页面
+│           │   ├── Index.ets    # 首页（任务广场）
+│           │   ├── Task/        # 任务模块
+│           │   ├── Trade/       # 电商模块
+│           │   ├── User/        # 用户模块
+│           │   └── Member/      # 会员模块
+│           ├── components/      # 自定义组件
+│           ├── model/           # 数据模型（interface定义）
+│           ├── service/         # 网络请求封装（http模块）
+│           └── common/          # 公共常量/工具
+└── oh-package.json5             # 包管理
+```
+
+**开发工具**：DevEco Studio
+**语言**：ArkTS（TypeScript扩展）
+**主要API**：`@ohos.net.http`（网络请求）、`@ohos.resourceManager`（资源管理）
+**请求方式**：http.createHttp() → /api/*
 
 ---
 
@@ -1153,7 +1267,7 @@ INSERT INTO sys_role_menu (role_id, menu_id) SELECT 1, id FROM sys_menu;
 
 ---
 
-### 8.2 前台移动端核心接口
+### 8.2 前台多端核心接口（小程序/Android/iOS/鸿蒙共用）
 
 #### 8.2.1 任务列表接口
 
@@ -1308,9 +1422,21 @@ INSERT INTO sys_role_menu (role_id, menu_id) SELECT 1, id FROM sys_menu;
 
 ---
 
-### 8.3 用户 & 微信授权模块
+### 8.3 用户授权 & 登录模块
 
-#### 8.3.1 微信静默登录接口
+**多端登录方式说明**：
+
+| 端类型 | 登录方式 | 说明 |
+|--------|----------|------|
+| 微信小程序 | 微信静默登录 | 通过 wx.login() 获取临时code，后端换取openid |
+| Android原生 | 微信登录 / 手机号+验证码 | 微信OpenSDK授权，或短信验证码登录 |
+| iOS原生 | 微信登录 / Apple登录 / 手机号+验证码 | 微信OpenSDK授权 / Sign in with Apple |
+| 鸿蒙原生 | 微信登录 / 手机号+验证码 | 微信HarmonyOS SDK授权 |
+| PC后台(Vue3) | 账号+密码 | 管理员账户体系（非用户端） |
+
+**统一认证流程**：各端登录成功后，后端签发统一JWT Token，各端Header携带 `Authorization: Bearer {token}` 调用API。
+
+#### 8.3.1 微信静默登录接口（微信小程序）
 
 **接口地址**：GET /api/user/wechat/login
 
@@ -1872,15 +1998,16 @@ INSERT INTO sys_role_menu (role_id, menu_id) SELECT 1, id FROM sys_menu;
 
 NEOP系统使用微信支付实现以下三个核心场景：
 
-| 支付场景 | 支付方式 | 接口类型 | 涉及的模块 | 金额方向 |
-|----------|----------|----------|------------|----------|
-| **会员充值** | JSAPI/小程序支付 | V2统一下单 | 营销增值模块 | 用户 → 商户 |
-| **电商下单** | JSAPI/小程序支付/H5支付 | V2统一下单 | 电商交易模块 | 用户 → 商户 |
-| **任务奖励打款** | 企业付款到零钱 | V2企业付款 | 任务打款模块 | 商户 → 用户 |
+| 支付场景 | 支付方式 | 接口类型 | 涉及的模块 | 金额方向 | 适用端 |
+|----------|----------|----------|------------|----------|--------|
+| **会员充值** | JSAPI/APP支付 | V2统一下单 | 营销增值模块 | 用户 → 商户 | 小程序/Android/iOS/鸿蒙 |
+| **电商下单** | JSAPI/APP支付 | V2统一下单 | 电商交易模块 | 用户 → 商户 | 小程序/Android/iOS/鸿蒙 |
+| **任务奖励打款** | 企业付款到零钱 | V2企业付款 | 任务打款模块 | 商户 → 用户 | 后端执行，各端均可发起提现 |
 
 **技术选型说明**：
 - 使用 `weixin-java-pay` SDK（v4.6.0）封装微信支付V2接口
-- 会员充值和电商支付使用 **JSAPI统一下单** 获取 prepay_id，前端调起支付
+- 小程序端使用 **JSAPI支付**（trade_type=JSAPI），Android/iOS/鸿蒙使用 **APP支付**（trade_type=APP）
+- 各端统一下单获取 prepay_id 后，分别使用对应平台SDK调起支付
 - 任务奖励使用 **V2企业付款到零钱** 接口，使用 p12 证书
 - 统一下单回调通知使用 **V2 XML 格式** 回调
 
@@ -2009,7 +2136,7 @@ neop:
     notify-domain: https://neop.gongziyu.com      # 支付回调域名（用于生成回调地址）
 ```
 
-### 9.3 JSAPI 统一下单（会员充值 & 电商支付）
+### 9.3 统一下单（JSAPI & APP，会员充值 & 电商支付）
 
 #### 9.3.1 统一下单接口规范
 
@@ -2030,7 +2157,7 @@ neop:
 | total_fee | 是 | Integer | 订单总金额，单位：**分**，即元*100 |
 | spbill_create_ip | 是 | String | 终端IP：用户公网IP |
 | notify_url | 是 | String | 回调通知地址 |
-| trade_type | 是 | String | JSAPI（公众号/小程序）/ MWEB（H5）/ APP |
+| trade_type | 是 | String | JSAPI（小程序）/ APP（Android/iOS/鸿蒙） |
 | openid | 是(trade_type=JSAPI) | String | 用户openid（JSAPI支付必传） |
 
 **响应参数**（关键字段）：
@@ -2201,154 +2328,164 @@ public Map<String, Object> payOrder(Long userId, Long orderId) {
 - `notify_url` 为 `/api/wechat/shop/callback`
 - 回调处理逻辑不同（更新订单状态、扣减库存）
 
-### 9.4 H5 支付（非微信浏览器场景）
+### 9.4 五端支付接入
 
-当用户在非微信内置浏览器中打开H5页面进行支付时，使用 H5 支付（trade_type=MWEB）。
+五端支付场景及对应 trade_type：
 
-**使用场景**：
-- UniApp H5 在非微信浏览器中购买会员/商品
-- 外部浏览器访问移动端H5
+| 端类型 | 支付方式 | trade_type | 前端调起方式 |
+|--------|----------|------------|-------------|
+| 微信小程序 | 微信JSAPI支付 | JSAPI | `wx.requestPayment` |
+| Android原生 | 微信APP支付 | APP | 微信OpenSDK `IWXAPI.sendReq` |
+| iOS原生 | 微信APP支付 | APP | 微信OpenSDK `WXApi.sendReq` |
+| 鸿蒙原生 | 微信APP支付 | APP | 微信支付SDK（HarmonyOS版） |
+| PC后台(Vue3) | 扫码支付/NATIVE | NATIVE | 二维码展示 |
 
-**与JSAPI的区别**：
+**后端统一逻辑**：各端统一下单时指定对应 trade_type，后端接口统一返回 prepay_id 和调起支付所需参数，各端分别使用对应平台SDK调起支付。
 
-| 差异项 | JSAPI | H5（MWEB） |
-|--------|-------|------------|
-| 是否需要openid | 是 | 否 |
-| 前端调起方式 | 调用 WeixinJSBridge | 跳转 mweb_url |
-| 返回参数 | prepay_id | mweb_url |
-| 适用环境 | 微信内浏览器/小程序 | 外部浏览器 |
+#### 9.4.1 微信小程序支付
 
-**前端处理H5支付**：
-
-```javascript
-// H5支付 - 直接跳转到mweb_url
-uni.request({
-    url: '/api/member/order/pay',
-    method: 'POST',
-    data: { orderId: orderId },
-    success: (res) => {
-        if (res.data.code === 200) {
-            // 获取mweb_url并跳转
-            const mwebUrl = res.data.data.mwebUrl;
-            window.location.href = mwebUrl;
-        }
-    }
-});
-```
-
-### 9.5 小程序支付
+使用 JSAPI 支付（trade_type=JSAPI），通过小程序原生 API `wx.requestPayment` 调起。
 
 **使用场景**：微信小程序内购买会员/商品
 
-**与JSAPI的关系**：小程序支付本质也是JSAPI支付，但前端调起方式不同。
+**与JSAPI（公众号H5）的区别**：
 
-**接口实现**：
-- 统一下单 `trade_type=JSAPI`，`openid` 使用小程序的 openid
-- 小程序 `appid` 与公众号 `appid` 不同，需要区分配置
-
-**配置说明**：
-
-```yaml
-neop:
-  wechat:
-    mp-appid: wx公众号appid          # 公众号AppID（H5登录用）
-    mini-appid: wx小程序appid         # 小程序AppID（小程序支付用）
-    mch-id: 1600000001               # 商户号（公众号和小程序可以共用一个）
-```
-
-**WxPayConfig 需要创建两个不同 appid 的实例**：
-
-```java
-// 公众号支付配置
-@Bean
-@ConditionalOnProperty(name = "neop.wechat.mp-appid")
-public WxPayService wxPayServiceForMp() {
-    WxPayConfig config = new WxPayConfig();
-    config.setAppId(mpAppId);  // 公众号appid
-    config.setMchId(mchId);
-    config.setMchKey(apiKey);
-    config.setSignType("HMAC-SHA256");
-    // ...
-    return new WxPayServiceImpl(config);
-}
-
-// 小程序支付配置
-@Bean
-@ConditionalOnProperty(name = "neop.wechat.mini-appid")
-public WxPayService wxPayServiceForMini() {
-    WxPayConfig config = new WxPayConfig();
-    config.setAppId(miniAppId);  // 小程序appid
-    config.setMchId(mchId);
-    config.setMchKey(apiKey);
-    config.setSignType("HMAC-SHA256");
-    // ...
-    return new WxPayServiceImpl(config);
-}
-```
+| 差异项 | 小程序JSAPI | 公众号JSAPI |
+|--------|------------|-------------|
+| 是否需要openid | 是（小程序openid） | 是（公众号openid） |
+| AppID | 小程序AppID | 公众号AppID |
+| 前端调起方式 | `wx.requestPayment` | `WeixinJSBridge.invoke` |
+| 返回参数 | prepay_id | prepay_id |
+| 适用环境 | 微信小程序内 | 微信内浏览器 |
 
 **小程序前端调起支付**：
 
 ```javascript
-// 微信小程序内调起支付
 wx.requestPayment({
     timeStamp: res.data.timeStamp,
     nonceStr: res.data.nonceStr,
     package: res.data.package,
     signType: 'HMAC-SHA256',
     paySign: res.data.paySign,
-    success: function (res) {
-        // 支付成功，跳转到成功页面
-    },
-    fail: function (err) {
-        // 支付失败，提示用户
-    }
+    success: () => wx.showToast({ title: '支付成功' }),
+    fail: () => wx.showToast({ title: '支付取消', icon: 'none' })
 });
 ```
 
-**UniApp 内调起小程序支付**：
+**接口实现**：统一下单 `trade_type=JSAPI`，`openid` 使用小程序的 openid
 
-```javascript
-// UniApp 跨端兼容写法
-uni.requestPayment({
-    provider: 'wxpay',
-    timeStamp: res.data.timeStamp,
-    nonceStr: res.data.nonceStr,
-    package: res.data.package,
-    signType: 'HMAC-SHA256',
-    paySign: res.data.paySign,
-    success: (res) => {
-        uni.showToast({ title: '支付成功' });
-        uni.navigateTo({ url: '/pages/shop/payment-result?status=success' });
-    },
-    fail: (err) => {
-        uni.showToast({ title: '支付取消', icon: 'none' });
-    }
-});
+#### 9.4.2 Android 原生APP支付
+
+使用微信APP支付（trade_type=APP），通过微信OpenSDK调起。
+
+**使用场景**：Android原生App内购买会员/商品
+
+**依赖接入**：
+```kotlin
+// build.gradle.kts
+implementation("com.tencent.mm.opensdk:wechat-sdk-android:6.8.0")
 ```
 
-**H5（微信内浏览器）调起支付**：
+**前端调起支付（Kotlin）**：
+```kotlin
+val wxApi = WXAPIFactory.createWXAPI(this, APP_ID)
+wxApi.registerApp(APP_ID)
+val req = PayReq().apply {
+    appId = response.appId
+    partnerId = response.partnerId
+    prepayId = response.prepayId
+    nonceStr = response.nonceStr
+    timeStamp = response.timeStamp
+    packageValue = response.packageValue
+    sign = response.sign
+}
+wxApi.sendReq(req)
+```
 
-```javascript
-// 公众号H5内调起微信支付（需引入JS-SDK）
-function onBridgeReady(payParams) {
-    WeixinJSBridge.invoke(
-        'getBrandWCPayRequest',
-        {
-            appId: payParams.appId,
-            timeStamp: payParams.timeStamp,
-            nonceStr: payParams.nonceStr,
-            package: payParams.package,
-            signType: 'HMAC-SHA256',
-            paySign: payParams.paySign
-        },
-        function (res) {
-            if (res.err_msg === 'get_brand_wcpay_request:ok') {
-                // 支付成功
-            } else {
-                // 支付取消或失败
-            }
-        }
-    );
+**接口实现**：统一下单 `trade_type=APP`，不需要 openid
+
+#### 9.4.3 iOS 原生APP支付
+
+使用微信APP支付（trade_type=APP），通过微信OpenSDK调起。
+
+**使用场景**：iOS原生App内购买会员/商品
+
+**依赖接入**：
+```ruby
+# Podfile
+pod 'WechatOpenSDK'
+```
+
+**前端调起支付（Swift）**：
+```swift
+let req = PayReq()
+req.partnerId = response.partnerId
+req.prepayId = response.prepayId
+req.nonceStr = response.nonceStr
+req.timeStamp = UInt32(response.timeStamp)!
+req.package = response.packageValue
+req.sign = response.sign
+WXApi.send(req)
+```
+
+**接口实现**：统一下单 `trade_type=APP`，不需要 openid
+
+#### 9.4.4 鸿蒙原生APP支付
+
+使用微信APP支付（trade_type=APP），通过微信HarmonyOS支付SDK调起。
+
+**使用场景**：鸿蒙原生App内购买会员/商品
+
+**接口实现**：统一下单 `trade_type=APP`，不需要 openid
+
+**说明**：鸿蒙微信支付SDK随微信官方适配进度更新，具体调起方式参考微信官方HarmonyOS SDK文档。
+
+#### 9.4.5 统一多 AppID 配置
+
+```yaml
+neop:
+  wechat:
+    mp-appid: wx公众号appid          # 公众号AppID（H5登录用）
+    mini-appid: wx小程序appid         # 小程序AppID（小程序支付用）
+    app-appid: wx原生app的appid        # 开放平台AppID（Android/iOS/鸿蒙APP支付用）
+    mch-id: 1600000001               # 商户号（所有端可共用一个）
+```
+
+**重要**：小程序和APP支付使用不同的AppID，但可共用一个微信商户号（mch_id）。MCHID绑定时需在微信支付商户平台分别绑定小程序AppID和开放平台AppID。
+
+#### 9.4.6 WxPayConfig 多实例配置
+
+```java
+// 公众号支付配置
+@Bean
+@ConditionalOnProperty(name = "neop.wechat.mp-appid")
+public WxPayService wxPayServiceForMp() {
+    return createWxPayService(mpAppId);
+}
+
+// 小程序支付配置
+@Bean
+@ConditionalOnProperty(name = "neop.wechat.mini-appid")
+public WxPayService wxPayServiceForMini() {
+    return createWxPayService(miniAppId);
+}
+
+// APP支付配置（Android/iOS/鸿蒙共用）
+@Bean
+@ConditionalOnProperty(name = "neop.wechat.app-appid")
+public WxPayService wxPayServiceForApp() {
+    return createWxPayService(appAppId);
+}
+
+private WxPayService createWxPayService(String appId) {
+    WxPayConfig config = new WxPayConfig();
+    config.setAppId(appId);
+    config.setMchId(mchId);
+    config.setMchKey(apiKey);
+    config.setSignType("HMAC-SHA256");
+    WxPayService service = new WxPayServiceImpl();
+    service.setConfig(config);
+    return service;
 }
 ```
 
@@ -3168,7 +3305,7 @@ spring:
 | 5 | 任务模块（核心） | 任务CRUD+领取+提交+审核+提现 | 3天 |
 | 6 | 微信企业付款 | 企业付款接口+回调+重试+补发 | 1.5天 |
 | 7 | 数据统计+定时任务 | 数据看板+6个定时任务 | 1天 |
-| 8 | UniApp移动端 | 全部页面+接口对接 | 4天 |
+| 8 | 微信小程序 | 全部页面+接口对接 | 4天 |
 | 9 | Vue3后台管理 | 全部页面+接口对接 | 4天 |
 | 10 | 联调、测试、部署 | 全链路测试+Nginx部署+HTTPS | 2天 |
 
@@ -4125,9 +4262,9 @@ public class DataArchiveTask {
 }
 ```
 
-**UniApp移动端**
-- 使用HBuilderX创建项目，选择Vue3 + Vite模板
-- 安装uni-ui组件库：`npm install @dcloudio/uni-ui`
+**微信小程序**
+- 使用微信开发者工具创建项目
+- 原生微信小程序开发，无需额外UI框架
 
 ---
 
@@ -4717,126 +4854,124 @@ public class PageDTO {
 
 ---
 
-## 三十一、UniApp移动端固定结构（AI强制遵循）
+## 三十一、微信小程序固定结构（AI强制遵循）
 
 ### 31.1 页面固定结构模板
 
-**所有UniApp页面必须严格按照此模板生成**，确保结构一致、易于维护。
+**所有微信小程序页面必须严格按照此模板生成**，确保结构一致、易于维护。
 
 ```javascript
-// 31.1.1 标准页面模板（taskList.vue）
-<template>
-  <view class="page-container">
-    <!-- 加载状态 -->
-    <uni-load-more v-if="loadingStatus === 'loading'" status="loading"></uni-load-more>
-    
-    <!-- 空状态 -->
-    <view v-if="loadingStatus === 'empty'" class="empty-state">
-      <image src="/static/empty.png" mode="aspectFit" style="width: 300rpx; height: 300rpx;"></image>
-      <text class="empty-text">暂无数据</text>
-    </view>
-    
-    <!-- 数据列表 -->
-    <view v-if="loadingStatus === 'success'" class="data-list">
-      <view v-for="(item, index) in dataList" :key="item.id" class="list-item">
-        <image :src="item.taskCover" mode="aspectFill" style="width: 200rpx; height: 150rpx;"></image>
-        <view class="item-info">
-          <text class="item-title">{{ item.taskTitle }}</text>
-          <text class="item-reward">奖励：¥{{ item.rewardAmount }}</text>
-        </view>
+// 31.1.1 标准页面模板（pages/task/list.js + .wxml + .wxss + .json）
+
+// === pages/task/list.wxml ===
+<view class="page-container">
+  <!-- 加载状态 -->
+  <view wx:if="{{loadingStatus === 'loading'}}" class="loading-state">
+    <view class="loading-icon"></view>
+  </view>
+  
+  <!-- 空状态 -->
+  <view wx:elif="{{loadingStatus === 'empty'}}" class="empty-state">
+    <image src="/static/empty.png" mode="aspectFit" style="width: 300rpx; height: 300rpx;"></image>
+    <text class="empty-text">暂无数据</text>
+  </view>
+  
+  <!-- 数据列表 -->
+  <scroll-view wx:else scroll-y="true" class="data-list" bindscrolltolower="onLoadMore">
+    <view wx:for="{{dataList}}" wx:key="id" class="list-item">
+      <image src="{{item.taskCover}}" mode="aspectFill" style="width: 200rpx; height: 150rpx;"></image>
+      <view class="item-info">
+        <text class="item-title">{{item.taskTitle}}</text>
+        <text class="item-reward">奖励：¥{{item.rewardAmount}}</text>
       </view>
     </view>
-    
-    <!-- 上拉加载更多 -->
-    <uni-load-more v-if="loadingStatus === 'success'" :status="loadMoreStatus"></uni-load-more>
-  </view>
-</template>
+    <view class="load-more" wx:if="{{loadMoreStatus === 'noMore'}}">没有更多了</view>
+  </scroll-view>
+</view>
 
-<script>
-export default {
-  data() {
-    return {
-      loadingStatus: 'loading',  // 加载状态：loading/ success/ empty/ error
-      loadMoreStatus: 'more',    // 上拉加载状态：more/ loading/ noMore
-      dataList: [],
-      queryParams: {
-        current: 1,
-        size: 10
-      },
-      total: 0
-    };
+// === pages/task/list.js ===
+const request = require('../../utils/request');
+
+Page({
+  data: {
+    loadingStatus: 'loading',  // 加载状态：loading/ success/ empty/ error
+    loadMoreStatus: 'more',    // 上拉加载状态：more/ loading/ noMore
+    dataList: [],
+    queryParams: {
+      current: 1,
+      size: 10
+    },
+    total: 0
   },
-  
+
   onLoad(options) {
     // 必须处理参数接收和错误兜底
     try {
       if (options.taskId) {
-        this.taskId = options.taskId;
+        this.setData({ 'queryParams.taskId': options.taskId });
       }
     } catch (error) {
       console.error('页面参数解析失败', error);
-      uni.showToast({ title: '页面参数错误', icon: 'none' });
+      wx.showToast({ title: '页面参数错误', icon: 'none' });
     }
-    
     this.fetchData();
   },
-  
+
   onPullDownRefresh() {
     // 下拉刷新
-    this.queryParams.current = 1;
-    this.dataList = [];
+    this.setData({
+      'queryParams.current': 1,
+      dataList: []
+    });
     this.fetchData();
   },
-  
-  onReachBottom() {
-    // 上拉加载更多
-    if (this.loadMoreStatus === 'noMore') {
-      return;
-    }
-    this.queryParams.current++;
-    this.fetchData();
-  },
-  
-  methods: {
-    async fetchData() {
-      try {
-        this.loadingStatus = this.dataList.length === 0 ? 'loading' : 'success';
-        this.loadMoreStatus = 'loading';
-        
-        const res = await this.$request({
-          url: '/api/task/list',
-          method: 'GET',
-          data: this.queryParams
-        });
-        
-        if (res.code === 200) {
-          const newData = res.data.records || [];
-          this.total = res.data.total;
-          
-          if (this.queryParams.current === 1) {
-            this.dataList = newData;
-          } else {
-            this.dataList = this.dataList.concat(newData);
-          }
-          
-          this.loadingStatus = this.dataList.length === 0 ? 'empty' : 'success';
-          this.loadMoreStatus = this.dataList.length >= this.total ? 'noMore' : 'more';
-        } else {
-          throw new Error(res.msg || '请求失败');
-        }
-      } catch (error) {
-        console.error('获取数据失败', error);
-        this.loadingStatus = 'error';
-        uni.showToast({ title: error.message || '网络错误', icon: 'none' });
-      } finally {
-        uni.stopPullDownRefresh();
-      }
-    }
-  }
-};
-</script>
 
-<style scoped>
+  onLoadMore() {
+    // 上拉加载更多
+    if (this.data.loadMoreStatus === 'noMore') return;
+    this.setData({ 'queryParams.current': this.data.queryParams.current + 1 });
+    this.fetchData();
+  },
+
+  fetchData() {
+    const that = this;
+    const { dataList, queryParams } = this.data;
+
+    this.setData({
+      loadingStatus: dataList.length === 0 ? 'loading' : 'success',
+      loadMoreStatus: 'loading'
+    });
+
+    request({
+      url: '/api/task/list',
+      method: 'GET',
+      data: queryParams
+    }).then(res => {
+      if (res.code === 200) {
+        const newData = res.data.records || [];
+        const total = res.data.total;
+        const mergedList = queryParams.current === 1 ? newData : dataList.concat(newData);
+
+        that.setData({
+          dataList: mergedList,
+          total: total,
+          loadingStatus: mergedList.length === 0 ? 'empty' : 'success',
+          loadMoreStatus: mergedList.length >= total ? 'noMore' : 'more'
+        });
+      } else {
+        throw new Error(res.msg || '请求失败');
+      }
+    }).catch(error => {
+      console.error('获取数据失败', error);
+      that.setData({ loadingStatus: 'error' });
+      wx.showToast({ title: error.message || '网络错误', icon: 'none' });
+    }).finally(() => {
+      wx.stopPullDownRefresh();
+    });
+  }
+});
+
+// === pages/task/list.wxss ===
 .page-container {
   padding: 20rpx;
 }
@@ -4863,7 +4998,7 @@ export default {
   margin-top: 10rpx;
 }
 
-.empty-state {
+.empty-state, .loading-state {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -4876,7 +5011,20 @@ export default {
   color: #999;
   margin-top: 20rpx;
 }
-</style>
+
+.load-more {
+  text-align: center;
+  padding: 20rpx;
+  color: #999;
+  font-size: 26rpx;
+}
+
+// === pages/task/list.json ===
+{
+  "navigationBarTitleText": "任务列表",
+  "enablePullDownRefresh": true,
+  "usingComponents": {}
+}
 ```
 
 ### 31.2 统一请求工具封装
@@ -4893,7 +5041,7 @@ const request = (options) => {
       ...options.header
     };
     
-    const token = uni.getStorageSync('token');
+    const token = wx.getStorageSync('token');
     if (token) {
       header['Authorization'] = 'Bearer ' + token;
     }
@@ -4902,7 +5050,7 @@ const request = (options) => {
     const timeout = options.timeout || 30000;
     
     // 3. 发起请求
-    uni.request({
+    wx.request({
       url: baseUrl + options.url,
       method: options.method || 'GET',
       data: options.data || {},
@@ -4915,50 +5063,50 @@ const request = (options) => {
             resolve(res.data);
           } else if (res.data.code === 401) {
             // Token过期，跳转登录
-            uni.removeStorageSync('token');
-            uni.navigateTo({ url: '/pages/common/login' });
+            wx.removeStorageSync('token');
+            wx.navigateTo({ url: '/pages/common/login' });
             reject(new Error(res.data.msg));
           } else if (res.data.code === 429) {
-            uni.showToast({ title: '操作过于频繁', icon: 'none' });
+            wx.showToast({ title: '操作过于频繁', icon: 'none' });
             reject(new Error(res.data.msg));
           } else {
-            uni.showToast({ title: res.data.msg || '请求失败', icon: 'none' });
+            wx.showToast({ title: res.data.msg || '请求失败', icon: 'none' });
             reject(new Error(res.data.msg));
           }
         } else {
-          uni.showToast({ title: '服务器错误', icon: 'none' });
+          wx.showToast({ title: '服务器错误', icon: 'none' });
           reject(new Error('服务器错误'));
         }
       },
       fail: (err) => {
-        uni.showToast({ title: '网络错误', icon: 'none' });
+        wx.showToast({ title: '网络错误', icon: 'none' });
         reject(err);
       }
     });
   });
 };
 
-export default request;
+module.exports = request;
 ```
 
 ### 31.3 图片使用规范
 
-```vue
+```html
 <!-- 31.3.1 所有图片必须使用<image>标签并设置固定宽高比占位 -->
-<!-- 禁止：使用<img>标签（UniApp不支持） -->
+<!-- 禁止：使用<img>标签（微信小程序不支持） -->
 <!-- 禁止：不设置宽高导致页面跳动 -->
 
 <!-- ✅ 正确示例 -->
 <image 
-  :src="item.taskCover" 
+  src="{{item.taskCover}}" 
   mode="aspectFill" 
   style="width: 200rpx; height: 150rpx;"
   lazy-load="true"
 ></image>
 
 <!-- ❌ 错误示例 -->
-<img :src="item.taskCover" />  <!-- UniApp不支持 -->
-<image :src="item.taskCover"></image>  <!-- 未设置宽高，页面会跳动 -->
+<img src="{{item.taskCover}}" />  <!-- 微信小程序不支持，需使用<image> -->
+<image src="{{item.taskCover}}"></image>  <!-- 未设置宽高，页面会跳动 -->
 ```
 
 ---

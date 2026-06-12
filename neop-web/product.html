@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>积分商城 - NEOP</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .product-card {
+      background: var(--white);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      transition: transform 0.2s, box-shadow 0.2s;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+    }
+    .product-card:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-md);
+    }
+    .product-img {
+      height: 200px;
+      background: var(--gray-100);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .product-img img {
+      width: 100%; height: 100%; object-fit: cover;
+    }
+    .product-img .stock-tag {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: rgba(0,0,0,0.6);
+      color: white;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 0.75rem;
+    }
+    .product-body {
+      padding: 16px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .product-name {
+      font-weight: 600;
+      font-size: 1rem;
+      margin-bottom: 6px;
+    }
+    .product-desc {
+      font-size: 0.8125rem;
+      color: var(--gray-500);
+      margin-bottom: 12px;
+      flex: 1;
+    }
+    .product-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .product-sales {
+      font-size: 0.75rem;
+      color: var(--gray-400);
+    }
+
+    .category-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .category-btn {
+      padding: 6px 16px;
+      border: 1.5px solid var(--gray-300);
+      border-radius: 20px;
+      background: var(--white);
+      cursor: pointer;
+      font-size: 0.8125rem;
+      color: var(--gray-600);
+      transition: all 0.15s;
+      font-family: inherit;
+      white-space: nowrap;
+    }
+    .category-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .category-btn.active {
+      background: var(--primary);
+      color: var(--white);
+      border-color: var(--primary);
+    }
+
+    /* Detail */
+    .detail-images {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+    }
+    .detail-images img {
+      width: 80px;
+      height: 80px;
+      border-radius: var(--radius-sm);
+      object-fit: cover;
+      border: 2px solid transparent;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .detail-main-img {
+      width: 100%;
+      height: 280px;
+      background: var(--gray-100);
+      border-radius: var(--radius);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 5rem;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+    .detail-main-img img {
+      width: 100%; height: 100%; object-fit: cover;
+    }
+  </style>
+</head>
+<body data-page="product">
+  <div data-header></div>
+
+  <div class="container">
+    <h1 class="page-title">积分商城</h1>
+    <p class="page-subtitle">精选好物，积分兑换</p>
+
+    <!-- Search -->
+    <div class="search-bar">
+      <input type="text" class="form-input" id="prodKeyword" placeholder="搜索商品..." onkeydown="if(event.key==='Enter')handleSearch()">
+      <button class="btn btn-primary" onclick="handleSearch()">搜索</button>
+    </div>
+
+    <!-- Categories -->
+    <div class="category-bar" id="categoryBar">
+      <button class="category-btn active" onclick="filterCategory(null)">全部</button>
+    </div>
+
+    <!-- Product List -->
+    <div class="grid grid-4" id="productList">
+      <div class="loading"><div class="spinner"></div><p>加载中...</p></div>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination" id="prodPagination"></div>
+  </div>
+
+  <!-- Detail Modal -->
+  <div id="detailModal" class="modal-overlay hidden" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+      <div class="modal-header">
+        <strong id="detailTitle">商品详情</strong>
+        <button class="modal-close" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-body" id="detailBody"></div>
+    </div>
+  </div>
+
+  <script src="js/common.js"></script>
+  <script>
+    let prodPage = { current: 1, size: 12 };
+    let currentCategoryId = null;
+    let searchMode = false;
+    let searchKeyword = '';
+
+    /* ---- Init ---- */
+    (async function init() {
+      await loadCategories();
+      loadProducts(1);
+    })();
+
+    /* ---- Categories ---- */
+    async function loadCategories() {
+      const bar = document.getElementById('categoryBar');
+      bar.innerHTML = '<button class="category-btn active" onclick="filterCategory(null)">全部</button><span class="text-muted text-sm" style="padding:6px;">加载中...</span>';
+
+      const res = await PublicAPI.categoryList();
+      if (res.code === 200 && res.data?.length) {
+        bar.innerHTML = '<button class="category-btn active" onclick="filterCategory(null)">全部</button>'
+          + res.data.map(c =>
+            `<button class="category-btn" onclick="filterCategory(${c.id})">${c.categoryName || c.name || '分类' + c.id}</button>`
+          ).join('');
+      } else {
+        bar.innerHTML = '<button class="category-btn active" onclick="filterCategory(null)">全部</button>';
+      }
+    }
+
+    function filterCategory(id) {
+      currentCategoryId = id;
+      searchMode = false;
+      searchKeyword = '';
+      document.getElementById('prodKeyword').value = '';
+      document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+      event?.target?.classList?.add('active');
+      if (!id) document.querySelector('.category-btn').classList.add('active');
+      loadProducts(1);
+    }
+
+    /* ---- Search ---- */
+    function handleSearch() {
+      searchKeyword = document.getElementById('prodKeyword').value.trim();
+      if (!searchKeyword) {
+        searchMode = false;
+        loadProducts(1);
+        return;
+      }
+      searchMode = true;
+      document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+      document.querySelector('.category-btn').classList.add('active');
+      loadProducts(1);
+    }
+
+    /* ---- Product List ---- */
+    async function loadProducts(page) {
+      prodPage.current = page;
+      const container = document.getElementById('productList');
+      container.className = 'grid grid-4';
+      container.innerHTML = '<div class="loading"><div class="spinner"></div><p>加载中...</p></div>';
+
+      let res;
+      if (searchMode) {
+        res = await PublicAPI.productSearch({ current: page, size: prodPage.size, keyword: searchKeyword });
+      } else {
+        res = await PublicAPI.productList({ current: page, size: prodPage.size, categoryId: currentCategoryId || undefined });
+      }
+
+      if (res.code === 200 && res.data.records?.length) {
+        container.innerHTML = res.data.records.map(p => `
+          <div class="product-card" onclick="openDetail(${p.id})">
+            <div class="product-img">
+              ${p.productImg ? '<img src="' + p.productImg + '" alt="" onerror="this.parentElement.innerHTML=\'📦\'">' : '📦'}
+              <span class="stock-tag">库存 ${p.stock ?? 0}</span>
+            </div>
+            <div class="product-body">
+              <div class="product-name">${p.productName}</div>
+              <div class="product-desc">${truncate(p.content || '暂无描述', 30)}</div>
+              <div class="product-footer">
+                <span class="price">${formatMoney(p.price)}${p.originalPrice ? '<span class="price-original">'+formatMoney(p.originalPrice)+'</span>' : ''}</span>
+                <span class="product-sales">已售 ${p.sales ?? 0}</span>
+              </div>
+            </div>
+          </div>
+        `).join('');
+        renderPagination(document.getElementById('prodPagination'), prodPage, res.data.total, loadProducts);
+      } else {
+        container.className = '';
+        container.innerHTML = '<div class="empty"><div class="empty-icon">📦</div><p class="empty-text">' + (searchMode ? '未找到相关商品' : '暂无商品') + '</p></div>';
+        document.getElementById('prodPagination').innerHTML = '';
+      }
+    }
+
+    /* ---- Detail Modal ---- */
+    async function openDetail(id) {
+      const modal = document.getElementById('detailModal');
+      const body = document.getElementById('detailBody');
+      modal.classList.remove('hidden');
+      body.innerHTML = '<div class="loading"><div class="spinner"></div><p>加载中...</p></div>';
+
+      const res = await PublicAPI.productInfo(id);
+      if (res.code === 200) {
+        const p = res.data;
+        document.getElementById('detailTitle').textContent = p.productName;
+
+        const images = p.productImages ? p.productImages.split(',').map(s => s.trim()) : [];
+        const imageHtml = p.productImg || images.length > 0 ? `
+          <div class="detail-main-img">
+            <img src="${p.productImg || images[0]}" alt="" onerror="this.parentElement.innerHTML='📦'">
+          </div>
+          ${images.length > 1 ? '<div class="detail-images">' + images.map(img => '<img src="'+img+'" alt="" onerror="this.style.display=\'none\'">').join('') + '</div>' : ''}
+        ` : '<div class="detail-main-img">📦</div>';
+
+        body.innerHTML = `
+          ${imageHtml}
+          <div class="detail-meta" style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;">
+            <div class="detail-meta-item">
+              <div class="val" style="color:var(--danger);">${formatMoney(p.price)}</div>
+              <div class="lbl">现价</div>
+            </div>
+            ${p.originalPrice ? `<div class="detail-meta-item">
+              <div class="val" style="text-decoration:line-through;color:var(--gray-400);">${formatMoney(p.originalPrice)}</div>
+              <div class="lbl">原价</div>
+            </div>` : ''}
+            <div class="detail-meta-item">
+              <div class="val">${p.stock ?? 0}</div>
+              <div class="lbl">库存</div>
+            </div>
+            <div class="detail-meta-item">
+              <div class="val">${p.sales ?? 0}</div>
+              <div class="lbl">已售</div>
+            </div>
+          </div>
+          <div class="detail-content" style="line-height:1.8;">${p.content || '暂无商品详情'}</div>
+          <div class="mt-4">
+            <button class="btn btn-primary btn-block btn-lg" onclick="handleBuy(${p.id})">立即兑换</button>
+          </div>
+        `;
+      } else {
+        body.innerHTML = '<div class="error-box">' + (res.msg || '商品不存在或已下架') + '</div>';
+      }
+    }
+
+    function closeModal() {
+      document.getElementById('detailModal').classList.add('hidden');
+    }
+
+    /* ---- Buy ---- */
+    function handleBuy(productId) {
+      if (!getToken()) {
+        showToast('请先登录', 'error');
+        setTimeout(() => location.href = 'user.html', 1000);
+        return;
+      }
+      showToast('功能开发中，敬请期待', 'error');
+    }
+  </script>
+</body>
+</html>

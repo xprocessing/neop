@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEOP - 任务积分电商平台</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .hero {
+      background: linear-gradient(135deg, var(--primary) 0%, #7c3aed 100%);
+      color: var(--white);
+      padding: 60px 20px;
+      text-align: center;
+      border-radius: var(--radius-lg);
+      margin-bottom: 40px;
+    }
+    .hero h1 { font-size: 2.2rem; margin-bottom: 12px; }
+    .hero p { font-size: 1.1rem; opacity: 0.9; max-width: 600px; margin: 0 auto 24px; }
+    .hero .btn { background: var(--white); color: var(--primary); font-weight: 600; }
+    .hero .btn:hover { background: var(--gray-100); }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      margin-bottom: 40px;
+    }
+    .feature-card {
+      background: var(--white);
+      border-radius: var(--radius);
+      padding: 28px 24px;
+      text-align: center;
+      box-shadow: var(--shadow);
+      transition: transform 0.2s, box-shadow 0.2s;
+      cursor: pointer;
+      text-decoration: none;
+      color: inherit;
+      display: block;
+    }
+    .feature-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-lg);
+    }
+    .feature-icon {
+      font-size: 2.5rem;
+      margin-bottom: 12px;
+    }
+    .feature-card h3 { font-size: 1.125rem; margin-bottom: 8px; }
+    .feature-card p { color: var(--gray-500); font-size: 0.875rem; }
+
+    .stat-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+    .stat-card {
+      background: var(--white);
+      border-radius: var(--radius);
+      padding: 24px;
+      text-align: center;
+      box-shadow: var(--shadow);
+    }
+    .stat-num {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--primary);
+    }
+    .stat-label {
+      color: var(--gray-500);
+      font-size: 0.875rem;
+      margin-top: 4px;
+    }
+
+    @media (max-width: 768px) {
+      .feature-grid { grid-template-columns: 1fr; }
+      .stat-row { grid-template-columns: repeat(2, 1fr); }
+      .hero h1 { font-size: 1.6rem; }
+    }
+  </style>
+</head>
+<body data-page="index">
+  <div data-header></div>
+
+  <div class="container">
+    <!-- Hero -->
+    <div class="hero">
+      <h1>做任务 · 赚积分 · 兑好物</h1>
+      <p>完成任务获得积分奖励，在积分商城兑换精选商品，邀请好友一起玩</p>
+      <a href="task.html" class="btn btn-lg">开始做任务</a>
+    </div>
+
+    <!-- Feature Cards -->
+    <div class="feature-grid">
+      <a href="task.html" class="feature-card">
+        <div class="feature-icon">🎯</div>
+        <h3>任务大厅</h3>
+        <p>多种任务类型，轻松赚取积分奖励</p>
+      </a>
+      <a href="product.html" class="feature-card">
+        <div class="feature-icon">🛒</div>
+        <h3>积分商城</h3>
+        <p>精选好物，积分兑换，超值优惠</p>
+      </a>
+      <a href="user.html" class="feature-card">
+        <div class="feature-icon">👤</div>
+        <h3>个人中心</h3>
+        <p>查看积分余额，管理个人信息</p>
+      </a>
+    </div>
+
+    <!-- Stats -->
+    <div class="stat-row" id="homeStats">
+      <div class="stat-card" onclick="location.href='task.html'">
+        <div class="stat-num" id="statTasks">-</div>
+        <div class="stat-label">可领任务</div>
+      </div>
+      <div class="stat-card" onclick="location.href='product.html'">
+        <div class="stat-num" id="statProducts">-</div>
+        <div class="stat-label">在售商品</div>
+      </div>
+      <div class="stat-card" onclick="location.href='user.html'">
+        <div class="stat-num" id="statPoints">-</div>
+        <div class="stat-label">我的积分</div>
+      </div>
+      <div class="stat-card" onclick="location.href='task.html'">
+        <div class="stat-num" id="statMyTasks">-</div>
+        <div class="stat-label">我的任务</div>
+      </div>
+    </div>
+
+    <!-- Latest Tasks -->
+    <div class="card" style="margin-bottom:24px;">
+      <div class="card-header flex-between">
+        <span>最新任务</span>
+        <a href="task.html" class="text-sm">查看全部 →</a>
+      </div>
+      <div class="card-body" id="latestTasks">
+        <div class="loading"><div class="spinner"></div><p>加载中...</p></div>
+      </div>
+    </div>
+
+    <!-- Latest Products -->
+    <div class="card">
+      <div class="card-header flex-between">
+        <span>热门商品</span>
+        <a href="product.html" class="text-sm">查看全部 →</a>
+      </div>
+      <div class="card-body" id="latestProducts">
+        <div class="loading"><div class="spinner"></div><p>加载中...</p></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/common.js"></script>
+  <script>
+    (async function init() {
+      // Load stats
+      try {
+        const [taskRes, productRes] = await Promise.all([
+          PublicAPI.taskList({ current: 1, size: 1 }),
+          PublicAPI.productList({ current: 1, size: 1 }),
+        ]);
+        if (taskRes.code === 200) document.getElementById('statTasks').textContent = taskRes.data.total || 0;
+        if (productRes.code === 200) document.getElementById('statProducts').textContent = productRes.data.total || 0;
+      } catch {}
+
+      const user = getUser();
+      if (user && getToken()) {
+        try {
+          const [pts, myTask] = await Promise.all([
+            UserAPI.pointsBalance(),
+            TaskAPI.myList({ current: 1, size: 1 }),
+          ]);
+          if (pts.code === 200) document.getElementById('statPoints').textContent = formatPoint(pts.data.point || 0);
+          if (myTask.code === 200) document.getElementById('statMyTasks').textContent = myTask.data.total || 0;
+        } catch {}
+      } else {
+        document.getElementById('statPoints').textContent = '登录后查看';
+        document.getElementById('statMyTasks').textContent = '登录后查看';
+      }
+
+      // Load latest tasks
+      const tasksRes = await PublicAPI.taskList({ current: 1, size: 4 });
+      const taskContainer = document.getElementById('latestTasks');
+      if (tasksRes.code === 200 && tasksRes.data.records?.length) {
+        taskContainer.innerHTML = tasksRes.data.records.map(t => `
+          <div style="padding:14px 0;border-bottom:1px solid var(--gray-100);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+            <div>
+              <a href="task.html?id=${t.id}" style="font-weight:500;color:var(--gray-800);">${t.taskTitle}</a>
+              <p class="text-muted text-sm mt-2">${truncate(t.taskIntro, 40)}</p>
+            </div>
+            <span class="tag tag-primary" style="font-size:0.8125rem;">${formatMoney(t.rewardAmount)}</span>
+          </div>
+        `).join('');
+      } else {
+        taskContainer.innerHTML = '<div class="empty"><p class="empty-text">暂无任务</p></div>';
+      }
+
+      // Load latest products
+      const prodRes = await PublicAPI.productList({ current: 1, size: 4 });
+      const prodContainer = document.getElementById('latestProducts');
+      if (prodRes.code === 200 && prodRes.data.records?.length) {
+        prodContainer.innerHTML = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;" class="grid-4">'
+          + prodRes.data.records.map(p => `
+            <a href="product.html?id=${p.id}" style="display:block;text-decoration:none;color:inherit;">
+              <div style="background:var(--gray-100);border-radius:var(--radius-sm);aspect-ratio:1;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:2.5rem;margin-bottom:8px;">
+                ${p.productImg ? '<img src="' + p.productImg + '" alt="" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML=\'📦\'">' : '📦'}
+              </div>
+              <p style="font-size:0.875rem;font-weight:500;margin-bottom:4px;">${p.productName}</p>
+              <span class="price">${formatMoney(p.price)}</span>
+            </a>
+          `).join('') + '</div>';
+      } else {
+        prodContainer.innerHTML = '<div class="empty"><p class="empty-text">暂无商品</p></div>';
+      }
+    })();
+  </script>
+</body>
+</html>
